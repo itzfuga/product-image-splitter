@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+outfit_env/
+*.egg-info/
+
+# Flask
+instance/
+.webassets-cache
+
+# Uploads and results
+uploads/
+results/
+grouped_output/
+
+# Test images
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.avif
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env

@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Fashion Image Outfit Grouper</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header p {
+            color: #888;
+            font-size: 18px;
+        }
+        
+        .upload-section {
+            background: #2a2a2a;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        .upload-area {
+            border: 3px dashed #444;
+            border-radius: 15px;
+            padding: 60px 40px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.1);
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .upload-text {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #4ecdc4;
+        }
+        
+        .upload-hint {
+            color: #888;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #4ecdc4, #44a3aa);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(78, 205, 196, 0.3);
+        }
+        
+        .progress-section {
+            background: #2a2a2a;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+            display: none;
+        }
+        
+        .progress-section.active {
+            display: block;
+        }
+        
+        .progress-bar {
+            background: #333;
+            border-radius: 10px;
+            height: 30px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #4ecdc4, #44a3aa);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .status-message {
+            text-align: center;
+            font-size: 18px;
+            color: #4ecdc4;
+            margin-bottom: 20px;
+        }
+        
+        .log-area {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #333;
+        }
+        
+        .results-section {
+            display: none;
+        }
+        
+        .results-section.active {
+            display: block;
+        }
+        
+        .results-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .results-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 150px;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4ecdc4;
+            display: block;
+        }
+        
+        .stat-label {
+            color: #888;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .result-item {
+            background: #2a2a2a;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .result-item img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background: white;
+        }
+        
+        .result-item h3 {
+            color: #4ecdc4;
+            margin-bottom: 10px;
+        }
+        
+        .result-info {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .download-btn {
+            background: #4ecdc4;
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .download-btn:hover {
+            background: #44a3aa;
+            color: white;
+        }
+        
+        .download-all-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+            transition: all 0.3s ease;
+        }
+        
+        .download-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.3);
+        }
+        
+        .error-message {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .success-message {
+            background: #4ecdc4;
+            color: #1a1a1a;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .results-stats {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✂️ Product Image Separator Splitter</h1>
+            <p>Upload images with separator lines to split products automatically</p>
+        </div>
+        
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text" id="uploadText">Drop images with separators here</div>
+                <div class="upload-hint" id="uploadHint">Detects "STAFF/START EXCEED END" text or visual separator lines • JPG, PNG, WEBP, AVIF</div>
+                <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
+            </div>
+            <button class="upload-btn" id="uploadBtn">Select Images</button>
+        </div>
+        
+        <div class="progress-section" id="progressSection">
+            <div class="status-message" id="statusMessage">Processing...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div class="log-area" id="logArea"></div>
+        </div>
+        
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <h2>✅ Separator Splitting Complete!</h2>
+                <div class="success-message" id="successMessage"></div>
+            </div>
+            
+            <div class="results-stats" id="resultsStats">
+                <!-- Stats will be populated by JavaScript -->
+            </div>
+            
+            <button class="download-all-btn" id="downloadAllBtn">📦 Download All Results</button>
+            
+            <div class="results-grid" id="resultsGrid">
+                <!-- Results will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentSessionId = null;
+        let pollInterval = null;
+        
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const statusMessage = document.getElementById('statusMessage');
+        const logArea = document.getElementById('logArea');
+        const resultsSection = document.getElementById('resultsSection');
+        const successMessage = document.getElementById('successMessage');
+        const resultsStats = document.getElementById('resultsStats');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        
+        // Event listeners
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // Prevent default drag behaviors on document to avoid conflicts
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+            
+            uploadArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        // Handle drag events specifically for upload area
+        uploadArea.addEventListener('dragenter', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', (e) => {
+            // Only remove highlight if leaving the upload area entirely
+            if (!uploadArea.contains(e.relatedTarget)) {
+                uploadArea.classList.remove('dragover');
+                document.getElementById('uploadText').textContent = 'Drop fashion images here';
+            }
+        });
+        
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+        
+        function handleDragOver(e) {
+            // Update text for multiple files
+            try {
+                const fileCount = e.dataTransfer.items ? e.dataTransfer.items.length : (e.dataTransfer.files ? e.dataTransfer.files.length : 0);
+                const uploadText = document.getElementById('uploadText');
+                if (fileCount > 1) {
+                    uploadText.textContent = `Drop ${fileCount} files here!`;
+                } else if (fileCount === 1) {
+                    uploadText.textContent = 'Drop 1 file here!';
+                } else {
+                    uploadText.textContent = 'Drop fashion images here';
+                }
+            } catch (e) {
+                // Ignore errors in file count detection
+                console.log('Could not detect file count during drag');
+            }
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+            
+            // Reset text
+            document.getElementById('uploadText').textContent = 'Drop fashion images here';
+            
+            console.log('Drop event triggered');
+            console.log('DataTransfer object:', e.dataTransfer);
+            console.log('Files property:', e.dataTransfer.files);
+            console.log('Items property:', e.dataTransfer.items);
+            
+            // Method 1: Try to get actual files first
+            let files = [];
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                files = Array.from(e.dataTransfer.files);
+                console.log('Got files via dataTransfer.files:', files.length);
+                uploadFiles(files);
+                return;
+            }
+            
+            // Method 2: Try items interface for files
+            if (e.dataTransfer.items) {
+                console.log('Trying items interface, items count:', e.dataTransfer.items.length);
+                for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                    const item = e.dataTransfer.items[i];
+                    console.log(`Item ${i}: kind=${item.kind}, type=${item.type}`);
+                    if (item.kind === 'file') {
+                        const file = item.getAsFile();
+                        if (file) {
+                            files.push(file);
+                            console.log(`Added file: ${file.name}`);
+                        }
+                    }
+                }
+                
+                if (files.length > 0) {
+                    console.log('Final files array:', files.map(f => `${f.name} (${f.type}, ${f.size} bytes)`));
+                    uploadFiles(files);
+                    return;
+                }
+            }
+            
+            // Method 3: Handle text/HTML content (URLs from web browsers)
+            console.log('No files detected, trying to extract URLs from text/HTML...');
+            
+            // Collect all URLs from all items before processing
+            const allUrls = new Set(); // Use Set to avoid duplicates
+            let processedItems = 0;
+            const totalItems = e.dataTransfer.items ? e.dataTransfer.items.length : 0;
+            
+            if (totalItems === 0) {
+                showError('❌ No files or URLs detected in drop event');
+                return;
+            }
+            
+            // Process each item
+            for (let i = 0; i < totalItems; i++) {
+                const item = e.dataTransfer.items[i];
+                console.log(`Processing item ${i}: kind=${item.kind}, type=${item.type}`);
+                
+                if (item.type === 'text/html') {
+                    item.getAsString((html) => {
+                        console.log('HTML content length:', html.length);
+                        const extractedUrls = extractImageUrlsFromHtml(html);
+                        extractedUrls.forEach(url => allUrls.add(url));
+                        console.log(`Extracted ${extractedUrls.length} URLs from HTML`);
+                        
+                        processedItems++;
+                        if (processedItems === totalItems) {
+                            finalizeUrlProcessing(Array.from(allUrls));
+                        }
+                    });
+                } else if (item.type === 'text/plain') {
+                    item.getAsString((text) => {
+                        console.log('Plain text content:', text.substring(0, 200) + '...');
+                        const extractedUrls = extractImageUrlsFromText(text);
+                        extractedUrls.forEach(url => allUrls.add(url));
+                        console.log(`Extracted ${extractedUrls.length} URLs from text`);
+                        
+                        processedItems++;
+                        if (processedItems === totalItems) {
+                            finalizeUrlProcessing(Array.from(allUrls));
+                        }
+                    });
+                } else {
+                    // Non-text item, skip
+                    processedItems++;
+                    if (processedItems === totalItems) {
+                        finalizeUrlProcessing(Array.from(allUrls));
+                    }
+                }
+            }
+            
+            // Timeout fallback in case some items don't respond
+            setTimeout(() => {
+                if (processedItems < totalItems) {
+                    console.log(`Timeout: processed ${processedItems}/${totalItems} items`);
+                    finalizeUrlProcessing(Array.from(allUrls));
+                }
+            }, 2000);
+        }
+        
+        function finalizeUrlProcessing(urls) {
+            console.log('Final URL list:', urls);
+            if (urls.length > 0) {
+                loadImagesFromUrls(urls);
+            } else {
+                showError('❌ No image URLs found in dropped content. Try dragging files directly from File Explorer.');
+            }
+        }
+        
+        function extractImageUrlsFromHtml(html) {
+            const urls = [];
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Find all img tags
+            const images = doc.querySelectorAll('img');
+            images.forEach(img => {
+                const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-original');
+                if (src && (src.startsWith('http') || src.startsWith('//'))) {
+                    urls.push(src.startsWith('//') ? 'https:' + src : src);
+                }
+            });
+            
+            // Also try regex for any missed URLs (including AVIF from Taobao)
+            const urlRegex = /https?:\/\/[^\s"'<>]+\.(jpg|jpeg|png|gif|webp|avif)(\?[^\s"'<>]*)?/gi;
+            const matches = html.match(urlRegex);
+            if (matches) {
+                matches.forEach(url => {
+                    // Clean up URL (remove trailing punctuation)
+                    const cleanUrl = url.replace(/[.,;!?]+$/, '');
+                    if (!urls.includes(cleanUrl)) {
+                        urls.push(cleanUrl);
+                    }
+                });
+            }
+            
+            // Special handling for Taobao AVIF URLs that might be in different formats
+            const taobaoRegex = /https?:\/\/[^\s"'<>]*taobao[^\s"'<>]*\.(avif|jpg|jpeg|png|webp)(\?[^\s"'<>]*)?/gi;
+            const taobaoMatches = html.match(taobaoRegex);
+            if (taobaoMatches) {
+                taobaoMatches.forEach(url => {
+                    const cleanUrl = url.replace(/[.,;!?]+$/, '');
+                    if (!urls.includes(cleanUrl)) {
+                        urls.push(cleanUrl);
+                    }
+                });
+            }
+            
+            return urls;
+        }
+        
+        function extractImageUrlsFromText(text) {
+            const urls = [];
+            
+            // Standard image URL regex
+            const urlRegex = /https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|avif)(\?[^\s]*)?/gi;
+            const matches = text.match(urlRegex);
+            if (matches) {
+                matches.forEach(url => {
+                    const cleanUrl = url.replace(/[.,;!?]+$/, '');
+                    urls.push(cleanUrl);
+                });
+            }
+            
+            // Special handling for Taobao and other e-commerce URLs
+            const specialRegex = /https?:\/\/[^\s]*\.(avif|jpg|jpeg|png|webp)(\?[^\s]*)?/gi;
+            const specialMatches = text.match(specialRegex);
+            if (specialMatches) {
+                specialMatches.forEach(url => {
+                    const cleanUrl = url.replace(/[.,;!?]+$/, '');
+                    if (!urls.includes(cleanUrl)) {
+                        urls.push(cleanUrl);
+                    }
+                });
+            }
+            
+            return urls;
+        }
+        
+        async function loadImagesFromUrls(urls) {
+            if (urls.length === 0) return;
+            
+            console.log('Loading images from URLs:', urls);
+            showError(`🔄 Loading ${urls.length} images from URLs... This may take a moment.`);
+            
+            // Show progress
+            progressSection.classList.add('active');
+            statusMessage.textContent = 'Loading images from URLs...';
+            progressFill.style.width = '10%';
+            progressFill.textContent = '10%';
+            addLog('Starting URL image loading...');
+            
+            try {
+                // Convert URLs to files and upload
+                const formData = new FormData();
+                
+                for (let i = 0; i < urls.length; i++) {
+                    const url = urls[i];
+                    try {
+                        addLog(`Loading image ${i + 1}/${urls.length}: ${url}`);
+                        const response = await fetch(url);
+                        const blob = await response.blob();
+                        
+                        // Create filename from URL
+                        const filename = `image_${String(i + 1).padStart(3, '0')}_${url.split('/').pop().split('?')[0]}` || `image_${Date.now()}.jpg`;
+                        const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+                        
+                        formData.append('files[]', file);
+                        
+                        // Update progress
+                        const progress = 10 + (i / urls.length) * 20;
+                        progressFill.style.width = `${progress}%`;
+                        progressFill.textContent = `${Math.round(progress)}%`;
+                        
+                    } catch (error) {
+                        console.error(`Failed to load ${url}:`, error);
+                        addLog(`Failed to load: ${url}`, 'error');
+                    }
+                }
+                
+                // Upload the loaded files
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Upload failed');
+                }
+                
+                currentSessionId = result.session_id;
+                addLog(`Upload successful: ${result.message}`);
+                
+                // Start polling for status
+                startStatusPolling();
+                
+            } catch (error) {
+                showError(`❌ Failed to load images from URLs: ${error.message}`);
+                progressSection.classList.remove('active');
+            }
+        }
+        
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            uploadFiles(files);
+        }
+        
+        async function uploadFiles(files) {
+            if (!files || files.length === 0) {
+                showError('Please select some files');
+                return;
+            }
+            
+            console.log('All files:', files.map(f => `${f.name} (${f.type}, ${f.size} bytes)`));
+            
+            // Validate files - be more lenient with file type detection
+            const validFiles = files.filter(file => {
+                const isImage = file.type.startsWith('image/') || 
+                               file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|avif)$/i);
+                console.log(`File ${file.name}: type=${file.type}, isImage=${isImage}`);
+                return isImage;
+            });
+            
+            console.log('Valid files:', validFiles.map(f => f.name));
+            
+            if (validFiles.length === 0) {
+                showError('Please select valid image files (JPG, PNG, GIF, WEBP, AVIF)');
+                return;
+            }
+            
+            if (validFiles.length !== files.length) {
+                console.log(`Filtered ${files.length - validFiles.length} non-image files`);
+            }
+            
+            // Create form data
+            const formData = new FormData();
+            validFiles.forEach(file => {
+                formData.append('files[]', file);
+            });
+            
+            try {
+                // Show progress
+                progressSection.classList.add('active');
+                statusMessage.textContent = 'Uploading files...';
+                progressFill.style.width = '5%';
+                progressFill.textContent = '5%';
+                addLog('Starting upload...');
+                
+                // Upload files
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Upload failed');
+                }
+                
+                currentSessionId = result.session_id;
+                addLog(`Upload successful: ${result.message}`);
+                
+                // Start polling for status
+                startStatusPolling();
+                
+            } catch (error) {
+                showError(`Upload failed: ${error.message}`);
+                progressSection.classList.remove('active');
+            }
+        }
+        
+        function startStatusPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+            
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/status/${currentSessionId}`);
+                    const status = await response.json();
+                    
+                    updateProgress(status);
+                    
+                    if (status.status === 'completed') {
+                        clearInterval(pollInterval);
+                        showResults(status.results);
+                    } else if (status.status === 'error') {
+                        clearInterval(pollInterval);
+                        showError(status.message);
+                        progressSection.classList.remove('active');
+                    }
+                    
+                } catch (error) {
+                    console.error('Status polling error:', error);
+                }
+            }, 1000);
+        }
+        
+        function updateProgress(status) {
+            const progress = status.progress || 0;
+            progressFill.style.width = `${progress}%`;
+            progressFill.textContent = `${progress}%`;
+            statusMessage.textContent = status.message || 'Processing...';
+            
+            if (status.message) {
+                addLog(status.message);
+            }
+        }
+        
+        function showResults(results) {
+            progressSection.classList.remove('active');
+            resultsSection.classList.add('active');
+            
+            // Store results in localStorage for download function
+            localStorage.setItem(`results_${currentSessionId}`, JSON.stringify(results));
+            
+            // Update success message
+            successMessage.textContent = `Created ${results.groups} products from ${results.total_segments || results.groups} segments in ${results.total_images} images`;
+            
+            // Update stats
+            resultsStats.innerHTML = `
+                <div class="stat-item">
+                    <span class="stat-number">${results.total_images}</span>
+                    <div class="stat-label">Images Processed</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${results.total_segments || results.groups}</span>
+                    <div class="stat-label">Segments Created</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${results.products.length}</span>
+                    <div class="stat-label">Product Images</div>
+                </div>
+            `;
+            
+            // Update results grid
+            resultsGrid.innerHTML = '';
+            results.products.forEach(product => {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `
+                    <img src="/results/${currentSessionId}/${product.filename}" alt="Product ${product.product_id}">
+                    <h3>Product ${product.product_id}</h3>
+                    <div class="result-info">
+                        Segments: ${product.images.join(' + ')}<br>
+                        Combined from separator detection
+                    </div>
+                    <button class="download-btn" onclick="downloadProduct('${product.filename}')">
+                        💾 Download
+                    </button>
+                `;
+                resultsGrid.appendChild(item);
+            });
+            
+            // Setup download all button
+            downloadAllBtn.onclick = () => downloadAll();
+        }
+        
+        function downloadProduct(filename) {
+            const url = `/results/${currentSessionId}/${filename}`;
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+        }
+        
+        async function downloadAll() {
+            // Download all images individually with slight delay to avoid browser blocking
+            const resultsData = JSON.parse(localStorage.getItem(`results_${currentSessionId}`) || '{}');
+            const products = resultsData.products || [];
+            
+            if (products.length === 0) {
+                showError('No products to download');
+                return;
+            }
+            
+            // Update button to show progress
+            const downloadBtn = document.getElementById('downloadAllBtn');
+            const originalText = downloadBtn.innerHTML;
+            
+            for (let i = 0; i < products.length; i++) {
+                downloadBtn.innerHTML = `⏳ Downloading ${i + 1}/${products.length}...`;
+                
+                const product = products[i];
+                const url = `/results/${currentSessionId}/${product.filename}`;
+                
+                // Create invisible link and click it
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = product.filename;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Small delay between downloads to prevent browser from blocking
+                if (i < products.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+            
+            // Restore button text
+            downloadBtn.innerHTML = originalText;
+            showSuccess(`✅ Downloaded ${products.length} product images!`);
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            
+            // Insert after header
+            const header = document.querySelector('.header');
+            header.insertAdjacentElement('afterend', successDiv);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                successDiv.remove();
+            }, 3000);
+        }
+        
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+        
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            
+            // Insert after header
+            const header = document.querySelector('.header');
+            header.insertAdjacentElement('afterend', errorDiv);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
