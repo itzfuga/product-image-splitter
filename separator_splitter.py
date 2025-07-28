@@ -76,7 +76,11 @@ class SeparatorSplitter:
                 pil_image = image
             
             # Get text with bounding boxes
-            data = pytesseract.image_to_data(pil_image, output_type=pytesseract.Output.DICT)
+            try:
+                data = pytesseract.image_to_data(pil_image, output_type=pytesseract.Output.DICT)
+            except Exception as ocr_error:
+                print(f"OCR failed (continuing without text detection): {ocr_error}")
+                return []
             
             separator_positions = []
             separator_patterns = [
