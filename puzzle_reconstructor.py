@@ -376,12 +376,16 @@ class PuzzleReconstructor:
             
             # For middle images in chain, remove edges where stitching occurs
             if i > 0:  # Not first image - remove top edge
-                edge_pixels = min(self.edge_height, image.shape[0] // 4)
-                image = image[edge_pixels:, :]
+                edge_pixels = min(self.edge_height, image.shape[0] // 6)  # More conservative
+                if edge_pixels > 0 and image.shape[0] > edge_pixels * 2:  # Safety check
+                    image = image[edge_pixels:, :]
+                    print(f"    Removed {edge_pixels}px from top")
             
             if i < len(chain) - 1:  # Not last image - remove bottom edge
-                edge_pixels = min(self.edge_height, image.shape[0] // 4)
-                image = image[:-edge_pixels, :]
+                edge_pixels = min(self.edge_height, image.shape[0] // 6)  # More conservative
+                if edge_pixels > 0 and image.shape[0] > edge_pixels * 2:  # Safety check
+                    image = image[:-edge_pixels, :]
+                    print(f"    Removed {edge_pixels}px from bottom")
             
             stitched_images.append(image)
         
@@ -390,17 +394,35 @@ class PuzzleReconstructor:
         
         # Resize all images to same width and stitch vertically
         resized_images = []
-        for img in stitched_images:
+        for i, img in enumerate(stitched_images):
+            print(f"  Processing segment {i+1}: {img.shape}")
+            
             if img.shape[1] != max_width:
                 # Resize to match width while maintaining aspect ratio
-                height = int(img.shape[0] * max_width / img.shape[1])
+                height = max(1, int(img.shape[0] * max_width / img.shape[1]))
+                print(f"    Resizing to: ({max_width}, {height})")
                 resized = cv2.resize(img, (max_width, height), interpolation=cv2.INTER_AREA)
-                resized_images.append(resized)
             else:
-                resized_images.append(img)
+                resized = img.copy()
+            
+            # Ensure the image has the right number of channels
+            if len(resized.shape) == 2:
+                resized = cv2.cvtColor(resized, cv2.COLOR_GRAY2BGR)
+            elif resized.shape[2] == 4:
+                resized = cv2.cvtColor(resized, cv2.COLOR_BGRA2BGR)
+            
+            resized_images.append(resized)
+            print(f"    Final segment shape: {resized.shape}")
         
-        # Concatenate vertically
-        stitched = np.vstack(resized_images)
+        try:
+            # Concatenate vertically
+            print(f"  Concatenating {len(resized_images)} segments...")
+            stitched = np.vstack(resized_images)
+            print(f"  Final stitched shape: {stitched.shape}")
+        except Exception as e:
+            print(f"  Error during concatenation: {e}")
+            print(f"  Segment shapes: {[img.shape for img in resized_images]}")
+            raise
         
         # Apply auto-crop and ratio enforcement
         if self.auto_crop:
