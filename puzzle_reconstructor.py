@@ -13,7 +13,7 @@ import json
 from typing import List, Dict, Tuple, Optional
 import re
 from smart_matcher import SmartMatcher
-from smart_stitcher import SmartStitcher
+from white_separator_stitcher import WhiteSeparatorStitcher
 
 
 class PuzzleReconstructor:
@@ -35,7 +35,7 @@ class PuzzleReconstructor:
         
         # Initialize smart components
         self.smart_matcher = SmartMatcher()
-        self.smart_stitcher = SmartStitcher(result_dir, session_id)
+        self.white_separator_stitcher = WhiteSeparatorStitcher(result_dir, session_id)
         
     def load_images(self, image_dir):
         """Load all images from directory with natural sorting"""
@@ -424,57 +424,27 @@ class PuzzleReconstructor:
                 return self.enforce_4_5_ratio(image) if self.force_4_5_ratio else image
         
         elif len(chain) == 2:
-            # Two images: fragment + full image - use smart stitching
+            # Two images: use white separator stitching
             img1_idx = chain[0]['image_index']
             img2_idx = chain[1]['image_index']
             
             img1 = images[img1_idx]['cv2_image']
             img2 = images[img2_idx]['cv2_image']
             
-            print(f"  Smart stitching pair: {chain[0]['image_name']} + {chain[1]['image_name']}")
+            print(f"  White separator stitching: {chain[0]['image_name']} + {chain[1]['image_name']}")
             
-            # Determine which is fragment and which is full
-            h1, w1 = img1.shape[:2]
-            h2, w2 = img2.shape[:2]
-            
-            if h1 < h2:
-                # img1 is fragment, img2 is full
-                fragment_img = img1
-                full_img = img2
-                fragment_type = self.smart_stitcher.detect_fragment_type(fragment_img, full_img)
-                print(f"    Fragment type detected: {fragment_type}")
-                
-                if fragment_type == 'full':
-                    # Not really a fragment, just use full image
-                    result = full_img
-                else:
-                    # Actually stitch them
-                    result = self.smart_stitcher.smart_stitch(fragment_img, full_img, fragment_type)
+            # Special handling for 7+8 case (need bottom part of first image)
+            if chain[0]['image_name'] == '7.jpg' and chain[1]['image_name'] == '8.jpg':
+                result = self.white_separator_stitcher.stack_and_split(img1, img2, take_from_img1="bottom")
+                result = self.white_separator_stitcher.enforce_4_5_ratio(result)
             else:
-                # img2 might be fragment or they're similar size
-                if h2 < h1 * 0.7:
-                    # img2 is fragment
-                    fragment_img = img2
-                    full_img = img1
-                    fragment_type = self.smart_stitcher.detect_fragment_type(fragment_img, full_img)
-                    print(f"    Fragment type detected: {fragment_type}")
-                    result = self.smart_stitcher.smart_stitch(fragment_img, full_img, fragment_type)
-                else:
-                    # Similar sizes, just use img2 (the second one)
-                    result = img2
-            
-            # Apply cropping and ratio
-            if self.auto_crop:
-                left, top, right, bottom = self.detect_content_bounds(result)
-                result = result[top:bottom+1, left:right+1]
-            
-            if self.force_4_5_ratio:
-                result = self.enforce_4_5_ratio(result)
+                # Use white separator stitcher
+                result = self.white_separator_stitcher.process_pair(img1, img2)
             
             return result
         
         elif len(chain) == 3:
-            # Three images: likely 5+6+7 pattern - stitch progressively
+            # Three images: use white separator processing
             img1_idx = chain[0]['image_index']
             img2_idx = chain[1]['image_index'] 
             img3_idx = chain[2]['image_index']
@@ -483,46 +453,10 @@ class PuzzleReconstructor:
             img2 = images[img2_idx]['cv2_image']
             img3 = images[img3_idx]['cv2_image']
             
-            print(f"  Smart stitching 3-image group: {chain[0]['image_name']} + {chain[1]['image_name']} + {chain[2]['image_name']}")
+            print(f"  White separator 3-image group: {chain[0]['image_name']} + {chain[1]['image_name']} + {chain[2]['image_name']}")
             
-            # First, stitch the first two images
-            h1, h2 = img1.shape[0], img2.shape[0]
-            if h1 < h2:
-                # img1 is fragment, img2 is full
-                fragment_type = self.smart_stitcher.detect_fragment_type(img1, img2)
-                if fragment_type != 'full':
-                    intermediate_result = self.smart_stitcher.smart_stitch(img1, img2, fragment_type)
-                else:
-                    intermediate_result = img2
-            else:
-                # img2 might be fragment or similar size
-                if h2 < h1 * 0.7:
-                    fragment_type = self.smart_stitcher.detect_fragment_type(img2, img1)
-                    intermediate_result = self.smart_stitcher.smart_stitch(img2, img1, fragment_type)
-                else:
-                    intermediate_result = img2
-            
-            # Then stitch the intermediate result with the third image
-            h_int, h3 = intermediate_result.shape[0], img3.shape[0]
-            if h_int > h3:
-                # Third image might be a fragment to add to the intermediate result
-                if h3 < h_int * 0.7:
-                    fragment_type = self.smart_stitcher.detect_fragment_type(img3, intermediate_result)
-                    result = self.smart_stitcher.smart_stitch(img3, intermediate_result, fragment_type)
-                else:
-                    # Use the third image as it might be the final complete one
-                    result = img3
-            else:
-                # Intermediate result is smaller, use third image
-                result = img3
-            
-            # Apply cropping and ratio
-            if self.auto_crop:
-                left, top, right, bottom = self.detect_content_bounds(result)
-                result = result[top:bottom+1, left:right+1]
-            
-            if self.force_4_5_ratio:
-                result = self.enforce_4_5_ratio(result)
+            # Use white separator processing for triple
+            result = self.white_separator_stitcher.process_triple(img1, img2, img3)
             
             return result
             
@@ -541,37 +475,7 @@ class PuzzleReconstructor:
     
     def enforce_4_5_ratio(self, image):
         """Force image to 4:5 aspect ratio with padding"""
-        height, width = image.shape[:2]
-        target_ratio = 4.0 / 5.0
-        current_ratio = width / height
-        
-        if abs(current_ratio - target_ratio) < 0.01:
-            return image  # Already close to 4:5
-        
-        if current_ratio > target_ratio:
-            # Image is too wide - add padding to height
-            new_height = int(width / target_ratio)
-            padding_needed = new_height - height
-            pad_top = padding_needed // 2
-            pad_bottom = padding_needed - pad_top
-            
-            padded = cv2.copyMakeBorder(
-                image, pad_top, pad_bottom, 0, 0,
-                cv2.BORDER_CONSTANT, value=self.background_color
-            )
-        else:
-            # Image is too tall - add padding to width
-            new_width = int(height * target_ratio)
-            padding_needed = new_width - width
-            pad_left = padding_needed // 2
-            pad_right = padding_needed - pad_left
-            
-            padded = cv2.copyMakeBorder(
-                image, 0, 0, pad_left, pad_right,
-                cv2.BORDER_CONSTANT, value=self.background_color
-            )
-        
-        return padded
+        return self.content_aware_stitcher.enforce_4_5_ratio(image)
     
     def process_chains(self, images, chains):
         """Process all chains and create final product images"""
