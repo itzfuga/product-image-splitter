@@ -298,8 +298,8 @@ class PuzzleReconstructor:
         std2 = np.std(img2.reshape(-1, 3), axis=0)
         texture_diff = np.linalg.norm(std1 - std2)
         
-        # Combine metrics
-        is_similar = color_diff < 30 and texture_diff < 20  # Thresholds may need tuning
+        # Combine metrics - relaxed thresholds for white clothing variations
+        is_similar = color_diff < 60 and texture_diff < 50  # More lenient for lighting variations
         
         print(f"    Outfit match: color_diff={color_diff:.1f}, texture_diff={texture_diff:.1f}, match={is_similar}")
         

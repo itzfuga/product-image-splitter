@@ -1,0 +1,350 @@
+{
+  "total_images": 19,
+  "total_connections": 0,
+  "total_chains": 14,
+  "images": [
+    {
+      "index": 0,
+      "name": "1.jpg"
+    },
+    {
+      "index": 1,
+      "name": "2.jpg"
+    },
+    {
+      "index": 2,
+      "name": "3.jpg"
+    },
+    {
+      "index": 3,
+      "name": "4.jpg"
+    },
+    {
+      "index": 4,
+      "name": "5.jpg"
+    },
+    {
+      "index": 5,
+      "name": "6.jpg"
+    },
+    {
+      "index": 6,
+      "name": "7.jpg"
+    },
+    {
+      "index": 7,
+      "name": "8.jpg"
+    },
+    {
+      "index": 8,
+      "name": "9.jpg"
+    },
+    {
+      "index": 9,
+      "name": "Example 1.png"
+    },
+    {
+      "index": 10,
+      "name": "Example 2.png"
+    },
+    {
+      "index": 11,
+      "name": "Example 3.png"
+    },
+    {
+      "index": 12,
+      "name": "Example 4.png"
+    },
+    {
+      "index": 13,
+      "name": "Example 5.png"
+    },
+    {
+      "index": 14,
+      "name": "product_1 (1).jpg"
+    },
+    {
+      "index": 15,
+      "name": "product_2 (1).jpg"
+    },
+    {
+      "index": 16,
+      "name": "product_3 (1).jpg"
+    },
+    {
+      "index": 17,
+      "name": "product_4 (1).jpg"
+    },
+    {
+      "index": 18,
+      "name": "product_5 (1).jpg"
+    }
+  ],
+  "connections": [],
+  "chains": [
+    {
+      "chain_id": 0,
+      "length": 1,
+      "images": [
+        "1.jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 1,
+      "length": 1,
+      "images": [
+        "2.jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 2,
+      "length": 1,
+      "images": [
+        "3.jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 3,
+      "length": 2,
+      "images": [
+        "4.jpg",
+        "5.jpg"
+      ],
+      "avg_similarity": 0.9
+    },
+    {
+      "chain_id": 4,
+      "length": 2,
+      "images": [
+        "6.jpg",
+        "7.jpg"
+      ],
+      "avg_similarity": 0.9
+    },
+    {
+      "chain_id": 5,
+      "length": 1,
+      "images": [
+        "8.jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 6,
+      "length": 1,
+      "images": [
+        "9.jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 7,
+      "length": 2,
+      "images": [
+        "Example 1.png",
+        "Example 2.png"
+      ],
+      "avg_similarity": 0.9
+    },
+    {
+      "chain_id": 8,
+      "length": 2,
+      "images": [
+        "Example 3.png",
+        "Example 4.png"
+      ],
+      "avg_similarity": 0.9
+    },
+    {
+      "chain_id": 9,
+      "length": 2,
+      "images": [
+        "Example 5.png",
+        "product_1 (1).jpg"
+      ],
+      "avg_similarity": 0.9
+    },
+    {
+      "chain_id": 10,
+      "length": 1,
+      "images": [
+        "product_2 (1).jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 11,
+      "length": 1,
+      "images": [
+        "product_3 (1).jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 12,
+      "length": 1,
+      "images": [
+        "product_4 (1).jpg"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 13,
+      "length": 1,
+      "images": [
+        "product_5 (1).jpg"
+      ],
+      "avg_similarity": 0
+    }
+  ],
+  "processing_results": [
+    {
+      "chain_id": 0,
+      "output_file": "product_1.jpg",
+      "output_path": "test_output/product_1.jpg",
+      "source_images": [
+        "1.jpg"
+      ],
+      "dimensions": "1548x1936",
+      "success": true
+    },
+    {
+      "chain_id": 1,
+      "output_file": "product_2.jpg",
+      "output_path": "test_output/product_2.jpg",
+      "source_images": [
+        "2.jpg"
+      ],
+      "dimensions": "333x416",
+      "success": true
+    },
+    {
+      "chain_id": 2,
+      "output_file": "product_3.jpg",
+      "output_path": "test_output/product_3.jpg",
+      "source_images": [
+        "3.jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 3,
+      "output_file": "product_4.jpg",
+      "output_path": "test_output/product_4.jpg",
+      "source_images": [
+        "4.jpg",
+        "5.jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 4,
+      "output_file": "product_5.jpg",
+      "output_path": "test_output/product_5.jpg",
+      "source_images": [
+        "6.jpg",
+        "7.jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 5,
+      "output_file": "product_6.jpg",
+      "output_path": "test_output/product_6.jpg",
+      "source_images": [
+        "8.jpg"
+      ],
+      "dimensions": "883x1103",
+      "success": true
+    },
+    {
+      "chain_id": 6,
+      "output_file": "product_7.jpg",
+      "output_path": "test_output/product_7.jpg",
+      "source_images": [
+        "9.jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 7,
+      "output_file": "product_8.jpg",
+      "output_path": "test_output/product_8.jpg",
+      "source_images": [
+        "Example 1.png",
+        "Example 2.png"
+      ],
+      "dimensions": "513x642",
+      "success": true
+    },
+    {
+      "chain_id": 8,
+      "output_file": "product_9.jpg",
+      "output_path": "test_output/product_9.jpg",
+      "source_images": [
+        "Example 3.png",
+        "Example 4.png"
+      ],
+      "dimensions": "539x674",
+      "success": true
+    },
+    {
+      "chain_id": 9,
+      "output_file": "product_10.jpg",
+      "output_path": "test_output/product_10.jpg",
+      "source_images": [
+        "Example 5.png",
+        "product_1 (1).jpg"
+      ],
+      "dimensions": "1548x1936",
+      "success": true
+    },
+    {
+      "chain_id": 10,
+      "output_file": "product_11.jpg",
+      "output_path": "test_output/product_11.jpg",
+      "source_images": [
+        "product_2 (1).jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 11,
+      "output_file": "product_12.jpg",
+      "output_path": "test_output/product_12.jpg",
+      "source_images": [
+        "product_3 (1).jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 12,
+      "output_file": "product_13.jpg",
+      "output_path": "test_output/product_13.jpg",
+      "source_images": [
+        "product_4 (1).jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 13,
+      "output_file": "product_14.jpg",
+      "output_path": "test_output/product_14.jpg",
+      "source_images": [
+        "product_5 (1).jpg"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    }
+  ]
+}
