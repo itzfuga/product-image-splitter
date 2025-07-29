@@ -803,8 +803,11 @@
                     }
                 }
                 
-                // Upload the loaded files
-                const response = await fetch('/upload', {
+                // Upload the loaded files using the correct endpoint based on mode
+                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : '/upload';
+                console.log(`URL loading - Current mode: ${currentMode}, Using endpoint: ${uploadEndpoint}`);
+                addLog(`Using ${currentMode} mode for URL loading - endpoint: ${uploadEndpoint}`);
+                const response = await fetch(uploadEndpoint, {
                     method: 'POST',
                     body: formData
                 });
