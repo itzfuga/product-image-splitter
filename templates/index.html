@@ -820,6 +820,8 @@
                 
                 currentSessionId = result.session_id;
                 addLog(`Upload successful: ${result.message}`);
+                console.log('Upload result:', result);
+                console.log('Session ID:', currentSessionId);
                 
                 // Start polling for status
                 startStatusPolling();
@@ -893,6 +895,8 @@
                 
                 currentSessionId = result.session_id;
                 addLog(`Upload successful: ${result.message}`);
+                console.log('Upload result:', result);
+                console.log('Session ID:', currentSessionId);
                 
                 // Start polling for status
                 startStatusPolling();
@@ -913,13 +917,18 @@
                     const response = await fetch(`/status/${currentSessionId}`);
                     const status = await response.json();
                     
+                    console.log('Status update:', status);
+                    addLog(`Status: ${status.status} - ${status.message || ''}`);
+                    
                     updateProgress(status);
                     
                     if (status.status === 'completed') {
                         clearInterval(pollInterval);
+                        console.log('Processing completed, showing results:', status.results);
                         showResults(status.results);
                     } else if (status.status === 'error') {
                         clearInterval(pollInterval);
+                        console.error('Processing error:', status.message);
                         showError(status.message);
                         progressSection.classList.remove('active');
                     }
@@ -942,24 +951,32 @@
         }
         
         function showResults(results) {
+            console.log('showResults called with:', results);
             progressSection.classList.remove('active');
             resultsSection.classList.add('active');
             
             // Store results in localStorage for download function
             localStorage.setItem(`results_${currentSessionId}`, JSON.stringify(results));
             
-            // Update success message
-            successMessage.textContent = `Created ${results.groups} products from ${results.total_segments || results.groups} segments in ${results.total_images} images`;
+            // Update success message based on mode
+            if (currentMode === 'puzzle') {
+                successMessage.textContent = `Created ${results.groups} products from ${results.total_chains || results.groups} chains in ${results.total_images} images`;
+            } else {
+                successMessage.textContent = `Created ${results.groups} products from ${results.total_segments || results.groups} segments in ${results.total_images} images`;
+            }
             
             // Update stats
+            const segmentLabel = currentMode === 'puzzle' ? 'Chains Built' : 'Segments Created';
+            const segmentCount = currentMode === 'puzzle' ? (results.total_chains || results.groups) : (results.total_segments || results.groups);
+            
             resultsStats.innerHTML = `
                 <div class="stat-item">
                     <span class="stat-number">${results.total_images}</span>
                     <div class="stat-label">Images Processed</div>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-number">${results.total_segments || results.groups}</span>
-                    <div class="stat-label">Segments Created</div>
+                    <span class="stat-number">${segmentCount}</span>
+                    <div class="stat-label">${segmentLabel}</div>
                 </div>
                 <div class="stat-item">
                     <span class="stat-number">${results.products.length}</span>
