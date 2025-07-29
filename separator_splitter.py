@@ -16,9 +16,10 @@ from typing import Dict, List, Tuple, Optional
 
 
 class SeparatorSplitter:
-    def __init__(self, result_dir):
+    def __init__(self, result_dir, session_id=None):
         self.result_dir = Path(result_dir)
         self.result_dir.mkdir(exist_ok=True)
+        self.session_id = session_id
         
         # Configure Tesseract (adjust path if needed)
         # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -28,6 +29,13 @@ class SeparatorSplitter:
         self.auto_crop = True
         self.background_color = (255, 255, 255)  # White background
         self.content_padding = 20
+        
+        # Debug analysis folder
+        self.debug_analysis_dir = Path('debug_analysis')
+        self.debug_analysis_dir.mkdir(exist_ok=True)
+        (self.debug_analysis_dir / 'results').mkdir(exist_ok=True)
+        (self.debug_analysis_dir / 'debug_images').mkdir(exist_ok=True)
+        (self.debug_analysis_dir / 'sessions').mkdir(exist_ok=True)
         
     def load_images(self, image_dir):
         """Load all images from directory"""
@@ -569,12 +577,22 @@ class SeparatorSplitter:
             output_path = self.result_dir / filename
             cv2.imwrite(str(output_path), processed_img)
             
+            # Also save to debug analysis folder
+            if self.session_id:
+                debug_result_path = self.debug_analysis_dir / 'results' / f"{self.session_id}_{filename}"
+                cv2.imwrite(str(debug_result_path), processed_img)
+            
             # Save debug image if different from original
             try:
                 if not np.array_equal(processed_img, segment_img):
                     debug_filename = f"debug_product_{product_id}.png"
                     debug_path = self.result_dir / debug_filename
                     self.create_product_debug_image(segment_img, processed_img, debug_info, debug_path)
+                    
+                    # Also save to debug analysis folder
+                    if self.session_id:
+                        debug_analysis_path = self.debug_analysis_dir / 'debug_images' / f"{self.session_id}_{debug_filename}"
+                        self.create_product_debug_image(segment_img, processed_img, debug_info, debug_analysis_path)
             except Exception as e:
                 print(f"Warning: Could not create debug image: {e}")
             
@@ -629,12 +647,22 @@ class SeparatorSplitter:
             output_path = self.result_dir / filename
             cv2.imwrite(str(output_path), processed_img)
             
+            # Also save to debug analysis folder
+            if self.session_id:
+                debug_result_path = self.debug_analysis_dir / 'results' / f"{self.session_id}_{filename}"
+                cv2.imwrite(str(debug_result_path), processed_img)
+            
             # Save debug image if different from original  
             try:
                 if not np.array_equal(processed_img, combined):
                     debug_filename = f"debug_product_{product_id}.png"
                     debug_path = self.result_dir / debug_filename
                     self.create_product_debug_image(combined, processed_img, debug_info, debug_path)
+                    
+                    # Also save to debug analysis folder
+                    if self.session_id:
+                        debug_analysis_path = self.debug_analysis_dir / 'debug_images' / f"{self.session_id}_{debug_filename}"
+                        self.create_product_debug_image(combined, processed_img, debug_info, debug_analysis_path)
             except Exception as e:
                 print(f"Warning: Could not create debug image: {e}")
             

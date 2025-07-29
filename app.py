@@ -21,11 +21,17 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 # Configuration
 UPLOAD_FOLDER = Path('uploads')
 RESULTS_FOLDER = Path('results')
+DEBUG_ANALYSIS_FOLDER = Path('debug_analysis')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif'}
 
 # Create directories
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 RESULTS_FOLDER.mkdir(exist_ok=True)
+DEBUG_ANALYSIS_FOLDER.mkdir(exist_ok=True)
+(DEBUG_ANALYSIS_FOLDER / 'originals').mkdir(exist_ok=True)
+(DEBUG_ANALYSIS_FOLDER / 'results').mkdir(exist_ok=True)
+(DEBUG_ANALYSIS_FOLDER / 'debug_images').mkdir(exist_ok=True)
+(DEBUG_ANALYSIS_FOLDER / 'sessions').mkdir(exist_ok=True)
 
 # Store processing status
 processing_status = {}
@@ -64,7 +70,7 @@ def process_images_async(session_id, upload_dir, result_dir):
         }
         
         # Create separator splitter
-        splitter = SeparatorSplitter(result_dir)
+        splitter = SeparatorSplitter(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
@@ -144,6 +150,7 @@ def process_images_async(session_id, upload_dir, result_dir):
         
         # Save processing info
         processing_info = {
+            'session_id': session_id,
             'total_images': len(images),
             'total_segments': len(segments),
             'total_products': len(products),
@@ -152,6 +159,11 @@ def process_images_async(session_id, upload_dir, result_dir):
         
         info_path = result_dir / "processing_info.json"
         with open(info_path, 'w') as f:
+            json.dump(processing_info, f, indent=2)
+        
+        # Also save to debug analysis folder for later inspection
+        debug_session_path = DEBUG_ANALYSIS_FOLDER / 'sessions' / f"{session_id}_session.json"
+        with open(debug_session_path, 'w') as f:
             json.dump(processing_info, f, indent=2)
         
         # Update final status
@@ -230,6 +242,11 @@ def upload_files():
                     file.save(str(filepath))
                     saved_files.append(filename)
                     print(f"Successfully saved: {filename}")
+                    
+                    # Also save to debug analysis folder for later inspection
+                    debug_original_path = DEBUG_ANALYSIS_FOLDER / 'originals' / f"{session_id}_{filename}"
+                    shutil.copy2(str(filepath), str(debug_original_path))
+                    
                 except Exception as e:
                     print(f"Error saving file {filename}: {e}")
             else:
