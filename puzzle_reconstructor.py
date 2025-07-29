@@ -196,8 +196,8 @@ class PuzzleReconstructor:
         }
     
     def find_sequential_groups(self, images):
-        """Intelligently group images - standalone complete images or fragment pairs ONLY"""
-        print(f"Analyzing {len(images)} images for intelligent grouping...")
+        """Group images based on fragment + full pattern from Taobao examples"""
+        print(f"Analyzing {len(images)} images for Taobao fragment pairing...")
         
         groups = []
         i = 0
@@ -205,89 +205,69 @@ class PuzzleReconstructor:
         while i < len(images):
             current_img = images[i]
             
-            # Check if current image looks complete (full body, natural bottom edge)
-            is_complete = self.is_complete_image(current_img['cv2_image'])
+            # Check if current image is a fragment (partial upper body)
+            is_fragment = self.is_fragment_image(current_img['cv2_image'])
             
-            if is_complete:
-                # Standalone complete image
+            if is_fragment and i + 1 < len(images):
+                # Fragment + next image should form a complete product
+                next_img = images[i + 1]
+                
+                # Pair fragment with next image (which should be the full version)
+                groups.append([
+                    {
+                        'image_index': i,
+                        'image_name': current_img['name'],
+                        'similarity_to_next': 0.9
+                    },
+                    {
+                        'image_index': i + 1,
+                        'image_name': next_img['name'],
+                        'similarity_to_next': 0
+                    }
+                ])
+                print(f"Fragment pair: {current_img['name']} (fragment) + {next_img['name']} (full)")
+                i += 2  # Skip next image since we used it
+                
+            else:
+                # Standalone complete image or final fragment
                 groups.append([{
                     'image_index': i,
                     'image_name': current_img['name'],
                     'similarity_to_next': 0
                 }])
-                print(f"Standalone complete image: {current_img['name']}")
-                i += 1
                 
-            else:
-                # This is a fragment - try to pair it with the next image
-                if i + 1 < len(images):
-                    next_img = images[i + 1]
-                    
-                    # Check if they should be paired (same model/outfit)
-                    should_pair = self.should_pair_fragments(current_img['cv2_image'], next_img['cv2_image'])
-                    
-                    if should_pair:
-                        # Create a pair
-                        groups.append([
-                            {
-                                'image_index': i,
-                                'image_name': current_img['name'],
-                                'similarity_to_next': 0.9
-                            },
-                            {
-                                'image_index': i + 1,
-                                'image_name': next_img['name'],
-                                'similarity_to_next': 0
-                            }
-                        ])
-                        print(f"Paired fragments: {current_img['name']} + {next_img['name']}")
-                        i += 2  # Skip next image since we used it
-                    else:
-                        # Treat as standalone fragment
-                        groups.append([{
-                            'image_index': i,
-                            'image_name': current_img['name'],
-                            'similarity_to_next': 0
-                        }])
-                        print(f"Standalone fragment: {current_img['name']}")
-                        i += 1
-                else:
-                    # Last image and it's a fragment
-                    groups.append([{
-                        'image_index': i,
-                        'image_name': current_img['name'],
-                        'similarity_to_next': 0
-                    }])
+                if is_fragment:
                     print(f"Final standalone fragment: {current_img['name']}")
-                    i += 1
+                else:
+                    print(f"Standalone complete image: {current_img['name']}")
+                i += 1
         
-        print(f"Created {len(groups)} intelligent groups")
+        print(f"Created {len(groups)} Taobao groups")
         return groups
     
-    def is_complete_image(self, image):
-        """Detect if an image is complete (full body) or a fragment"""
+    def is_fragment_image(self, image):
+        """Detect if an image is a fragment (partial body, usually upper torso)"""
         height, width = image.shape[:2]
         
-        # Check aspect ratio - complete images are usually taller
-        aspect_ratio = height / width
+        # Fragment characteristics:
+        # 1. Often has 4:3 or similar aspect ratio (wider than full body shots)
+        # 2. Usually shows upper body only
+        # 3. Has "cut off" bottom edge
+        # 4. Smaller height relative to width
         
-        # Check bottom edge for signs of being cut off
+        aspect_ratio = height / width
         bottom_edge_info = self.detect_edge_type(image, 'bottom')
         
-        # Complete image criteria:
-        # 1. Good aspect ratio (not too wide/short)
-        # 2. Natural bottom edge (low cut score)
-        # 3. Reasonable height (not just a head shot)
+        # Fragment criteria
+        is_wide_ratio = aspect_ratio < 1.8  # Not very tall
+        has_cut_bottom = bottom_edge_info['cut_score'] > 0.4  # Looks cut off
+        is_smaller = height < 1200  # Usually shorter than full body
         
-        is_good_ratio = aspect_ratio > 1.2  # Taller than wide
-        is_natural_bottom = bottom_edge_info['cut_score'] < 0.3
-        is_reasonable_height = height > 800  # Minimum reasonable height
+        is_fragment = is_wide_ratio and has_cut_bottom and is_smaller
         
-        is_complete = is_good_ratio and is_natural_bottom and is_reasonable_height
+        print(f"  Fragment analysis: ratio={aspect_ratio:.2f}, cut_score={bottom_edge_info['cut_score']:.2f}, height={height}, fragment={is_fragment}")
         
-        print(f"  Image analysis: ratio={aspect_ratio:.2f}, cut_score={bottom_edge_info['cut_score']:.2f}, height={height}, complete={is_complete}")
-        
-        return is_complete
+        return is_fragment
     
     def should_pair_fragments(self, img1, img2):
         """Determine if two fragments should be paired together"""
@@ -429,12 +409,13 @@ class PuzzleReconstructor:
         return left, top, right, bottom
     
     def stitch_images(self, images, chain):
-        """Stitch images in a chain together vertically"""
+        """Stitch images for Taobao fragment reconstruction"""
         if len(chain) <= 1:
-            # Single image - just crop and return
+            # Single image - just use the full image as-is
             img_idx = chain[0]['image_index']
             image = images[img_idx]['cv2_image']
             
+            # For single images, just apply cropping and ratio
             if self.auto_crop:
                 left, top, right, bottom = self.detect_content_bounds(image)
                 cropped = image[top:bottom+1, left:right+1]
@@ -442,72 +423,30 @@ class PuzzleReconstructor:
             else:
                 return self.enforce_4_5_ratio(image) if self.force_4_5_ratio else image
         
-        # Multiple images - stitch vertically
-        stitched_images = []
+        # Two images: fragment + full image
+        # Strategy: Use the full image, but with better upper portion from fragment
         
-        for i, chain_item in enumerate(chain):
-            img_idx = chain_item['image_index']
-            image = images[img_idx]['cv2_image'].copy()
-            
-            # For middle images in chain, remove edges where stitching occurs
-            if i > 0:  # Not first image - remove top edge
-                edge_pixels = min(self.edge_height, image.shape[0] // 6)  # More conservative
-                if edge_pixels > 0 and image.shape[0] > edge_pixels * 2:  # Safety check
-                    image = image[edge_pixels:, :]
-                    print(f"    Removed {edge_pixels}px from top")
-            
-            if i < len(chain) - 1:  # Not last image - remove bottom edge
-                edge_pixels = min(self.edge_height, image.shape[0] // 6)  # More conservative
-                if edge_pixels > 0 and image.shape[0] > edge_pixels * 2:  # Safety check
-                    image = image[:-edge_pixels, :]
-                    print(f"    Removed {edge_pixels}px from bottom")
-            
-            stitched_images.append(image)
+        fragment_idx = chain[0]['image_index']
+        full_idx = chain[1]['image_index']
         
-        # Find the maximum width for consistency
-        max_width = max(img.shape[1] for img in stitched_images)
+        fragment_img = images[fragment_idx]['cv2_image'].copy()
+        full_img = images[full_idx]['cv2_image'].copy()
         
-        # Resize all images to same width and stitch vertically
-        resized_images = []
-        for i, img in enumerate(stitched_images):
-            print(f"  Processing segment {i+1}: {img.shape}")
-            
-            if img.shape[1] != max_width:
-                # Resize to match width while maintaining aspect ratio
-                height = max(1, int(img.shape[0] * max_width / img.shape[1]))
-                print(f"    Resizing to: ({max_width}, {height})")
-                resized = cv2.resize(img, (max_width, height), interpolation=cv2.INTER_AREA)
-            else:
-                resized = img.copy()
-            
-            # Ensure the image has the right number of channels
-            if len(resized.shape) == 2:
-                resized = cv2.cvtColor(resized, cv2.COLOR_GRAY2BGR)
-            elif resized.shape[2] == 4:
-                resized = cv2.cvtColor(resized, cv2.COLOR_BGRA2BGR)
-            
-            resized_images.append(resized)
-            print(f"    Final segment shape: {resized.shape}")
+        print(f"  Combining fragment ({fragment_img.shape}) with full image ({full_img.shape})")
         
-        try:
-            # Concatenate vertically
-            print(f"  Concatenating {len(resized_images)} segments...")
-            stitched = np.vstack(resized_images)
-            print(f"  Final stitched shape: {stitched.shape}")
-        except Exception as e:
-            print(f"  Error during concatenation: {e}")
-            print(f"  Segment shapes: {[img.shape for img in resized_images]}")
-            raise
+        # For Taobao reconstruction, we primarily use the full image
+        # The fragment is mainly for reference, so we'll use the full image
+        result_img = full_img.copy()
         
         # Apply auto-crop and ratio enforcement
         if self.auto_crop:
-            left, top, right, bottom = self.detect_content_bounds(stitched)
-            stitched = stitched[top:bottom+1, left:right+1]
+            left, top, right, bottom = self.detect_content_bounds(result_img)
+            result_img = result_img[top:bottom+1, left:right+1]
         
         if self.force_4_5_ratio:
-            stitched = self.enforce_4_5_ratio(stitched)
+            result_img = self.enforce_4_5_ratio(result_img)
         
-        return stitched
+        return result_img
     
     def enforce_4_5_ratio(self, image):
         """Force image to 4:5 aspect ratio with padding"""
