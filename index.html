@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Image Splitter & Auto-Crop Tools</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 40px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tools-grid {
+            display: grid;
+            gap: 20px;
+        }
+        .tool-card {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #333;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .tool-title {
+            color: #4ecdc4;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+        .tool-description {
+            color: #ccc;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .tool-features {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        .tool-features li {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+        .tool-features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4ecdc4;
+        }
+        .tool-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            color: white;
+            text-decoration: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .tool-link:hover {
+            transform: translateY(-2px);
+        }
+        .recommended {
+            background: #2a3a3a;
+            border-color: #4ecdc4;
+        }
+        .badge {
+            display: inline-block;
+            background: #4ecdc4;
+            color: #1a1a1a;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Product Image Splitter & Auto-Crop Tools</h1>
+        
+        <div class="tools-grid">
+            <div class="tool-card recommended">
+                <h2 class="tool-title">Version 9 - Optimized 4:5 Ratio <span class="badge">LATEST</span></h2>
+                <p class="tool-description">
+                    Die neueste und beste Version mit optimiertem 4:5 Aspect Ratio, verbesserter Content-Erkennung und Debug-Modus.
+                </p>
+                <ul class="tool-features">
+                    <li>Automatisches 4:5 Aspect Ratio für alle Bilder</li>
+                    <li>Verbesserte Content-Erkennung ohne Abschneiden</li>
+                    <li>Debug-Modus mit visueller Analyse</li>
+                    <li>Smart Padding System</li>
+                    <li>Konsistente Ergebnisse</li>
+                </ul>
+                <a href="Product Image Splitter & Auto-Crop v9 - Optimized 4-5 Ratio.html" class="tool-link">Tool öffnen →</a>
+            </div>
+            
+            <div class="tool-card">
+                <h2 class="tool-title">Version 8 - Smart Grouping</h2>
+                <p class="tool-description">
+                    Version mit intelligenter Produkterkennung und verschiedenen Gruppierungsmodi.
+                </p>
+                <ul class="tool-features">
+                    <li>Smart Grouping Algorithmus</li>
+                    <li>Visuelle Analyse für Gruppierung</li>
+                    <li>OCR-basierte Trennung</li>
+                    <li>Manuelle Gruppierung</li>
+                </ul>
+                <a href="Product Image Splitter & Auto-Crop v8 - Smart Grouping.html" class="tool-link">Tool öffnen →</a>
+            </div>
+            
+            <div class="tool-card">
+                <h2 class="tool-title">Version 7 - Classic</h2>
+                <p class="tool-description">
+                    Die klassische Version mit grundlegenden Funktionen für einfache Aufgaben.
+                </p>
+                <ul class="tool-features">
+                    <li>Basis-Funktionalität</li>
+                    <li>OCR-Erkennung</li>
+                    <li>Einfaches Auto-Crop</li>
+                </ul>
+                <a href="Product Image Splitter & Auto-Crop v7.html" class="tool-link">Tool öffnen →</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
