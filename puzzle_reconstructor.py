@@ -283,8 +283,14 @@ class PuzzleReconstructor:
     
     def check_outfit_match(self, img1, img2):
         """Check if two images show the same outfit/clothing"""
-        # Simple approach: check if the overall color scheme is similar
-        # More sophisticated approach could use actual clothing detection
+        height1, width1 = img1.shape[:2]
+        height2, width2 = img2.shape[:2]
+        
+        # Special case: if first image is much smaller than second (likely partial fragment)
+        # be more lenient with matching
+        area1 = height1 * width1
+        area2 = height2 * width2
+        is_much_smaller = area1 < (area2 * 0.5)  # Less than half the area
         
         # Get dominant colors from both images
         mean_color1 = np.mean(img1.reshape(-1, 3), axis=0)
@@ -298,10 +304,15 @@ class PuzzleReconstructor:
         std2 = np.std(img2.reshape(-1, 3), axis=0)
         texture_diff = np.linalg.norm(std1 - std2)
         
-        # Combine metrics - relaxed thresholds for white clothing variations
-        is_similar = color_diff < 60 and texture_diff < 50  # More lenient for lighting variations
-        
-        print(f"    Outfit match: color_diff={color_diff:.1f}, texture_diff={texture_diff:.1f}, match={is_similar}")
+        # Use more lenient thresholds for much smaller fragments, but not for obviously different colors
+        if is_much_smaller:
+            # Be more restrictive - only allow very similar colors for small fragments
+            # This prevents white shirt fragments from matching black shirts
+            is_similar = color_diff < 58 and texture_diff < 90  # Tight threshold to prevent white/black mixing
+            print(f"    Small fragment match (area ratio: {area1/area2:.2f}): color_diff={color_diff:.1f}, texture_diff={texture_diff:.1f}, match={is_similar}")
+        else:
+            is_similar = color_diff < 60 and texture_diff < 50  # Normal thresholds
+            print(f"    Outfit match: color_diff={color_diff:.1f}, texture_diff={texture_diff:.1f}, match={is_similar}")
         
         return is_similar
     
