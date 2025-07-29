@@ -313,6 +313,20 @@ def process_images_async(session_id, upload_dir, result_dir):
         }
 
 
+@app.route('/version')
+def version():
+    """Check deployed version"""
+    return jsonify({
+        'version': 'white_separator_v2_aggressive_trim',
+        'timestamp': '2025-07-29_23:00',
+        'features': [
+            'white_separator_detection',
+            'aggressive_white_trimming', 
+            'smart_7_8_handling',
+            'puzzle_reconstruction_integrated'
+        ]
+    })
+
 @app.route('/')
 def index():
     cleanup_old_sessions()
