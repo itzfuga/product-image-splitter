@@ -177,12 +177,15 @@ class WhiteSeparatorStitcher:
             return self.trim_all_white_edges(stacked)
     
     def trim_all_white_edges(self, image):
-        """Remove ALL white space from all edges of image"""
+        """Remove ALL white space from all edges of image with enhanced side trimming"""
         h, w = image.shape[:2]
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Find content boundaries
-        content_mask = gray < self.white_threshold
+        # Use more aggressive threshold for side detection
+        aggressive_threshold = 250  # Even stricter than default 240
+        
+        # Find content boundaries with multiple thresholds
+        content_mask = gray < aggressive_threshold
         
         # Find rows and columns with content
         content_rows = np.any(content_mask, axis=1)
@@ -197,11 +200,48 @@ class WhiteSeparatorStitcher:
         left = np.argmax(content_cols) 
         right = len(content_cols) - np.argmax(content_cols[::-1])
         
+        # Enhanced side trimming - look for even more aggressive cuts
+        original_left, original_right = left, right
+        left = self.find_aggressive_left_boundary(gray, left, aggressive_threshold)
+        right = self.find_aggressive_right_boundary(gray, right, aggressive_threshold)
+        
+        # Debug output
+        if left != original_left or right != original_right:
+            print(f"    Side trimming: left {original_left}->{left}, right {original_right}->{right}")
+        
         # Crop to content only - no margin
         cropped = image[top:bottom, left:right]
         
-        print(f"  Aggressive white trim: {image.shape} -> {cropped.shape}")
+        print(f"  Ultra-aggressive white trim: {image.shape} -> {cropped.shape}")
         return cropped
+    
+    def find_aggressive_left_boundary(self, gray_image, initial_left, threshold):
+        """Find the most aggressive left boundary by scanning from the very edge"""
+        h, w = gray_image.shape
+        
+        # Start from the very left edge instead of initial boundary
+        for x in range(0, w):
+            col = gray_image[:, x]
+            # Look for ANY non-white pixels at all
+            non_white_pixels = np.sum(col < threshold)
+            if non_white_pixels > 0:  # Even 1 non-white pixel counts
+                return x
+        
+        return initial_left
+    
+    def find_aggressive_right_boundary(self, gray_image, initial_right, threshold):
+        """Find the most aggressive right boundary by scanning from the very edge"""
+        h, w = gray_image.shape
+        
+        # Start from the very right edge instead of initial boundary
+        for x in range(w - 1, -1, -1):
+            col = gray_image[:, x]
+            # Look for ANY non-white pixels at all
+            non_white_pixels = np.sum(col < threshold)
+            if non_white_pixels > 0:  # Even 1 non-white pixel counts
+                return x + 1
+        
+        return initial_right
     
     def enforce_4_5_ratio(self, image):
         """Enforce 4:5 aspect ratio with white padding"""
