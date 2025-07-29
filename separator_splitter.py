@@ -387,7 +387,7 @@ class SeparatorSplitter:
         return all_segments
     
     def detect_content_bounds(self, image: np.ndarray) -> Tuple[int, int, int, int]:
-        """Detect the bounds of actual content (model/product) in the image"""
+        """Detect the bounds of actual content (model/product) in the image - FAST version"""
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
@@ -395,39 +395,26 @@ class SeparatorSplitter:
         
         height, width = gray.shape
         
-        # Find content bounds by looking for non-background pixels
-        min_x, min_y = width, height
-        max_x, max_y = 0, 0
+        # Much faster approach using numpy operations
+        # Find all non-white pixels (threshold at 240)
+        content_mask = gray < 240
         
-        # More sophisticated content detection
-        for y in range(height):
-            for x in range(width):
-                pixel = gray[y, x]
-                
-                # Check if pixel is likely content (not white background)
-                # Consider both brightness and local variance
-                is_content = False
-                
-                # Direct brightness check
-                if pixel < 240:  # Not too bright
-                    is_content = True
-                
-                # Check local variance for subtle content
-                if not is_content and x > 5 and x < width-5 and y > 5 and y < height-5:
-                    local_region = gray[y-5:y+6, x-5:x+6]
-                    local_variance = np.var(local_region)
-                    if local_variance > 25:  # Some variation indicates content
-                        is_content = True
-                
-                if is_content:
-                    min_x = min(min_x, x)
-                    min_y = min(min_y, y)
-                    max_x = max(max_x, x)
-                    max_y = max(max_y, y)
+        # Find rows and columns that contain content
+        content_rows = np.any(content_mask, axis=1)
+        content_cols = np.any(content_mask, axis=0)
         
-        # If no content found, use full image
-        if min_x == width:
+        # Find bounds
+        content_row_indices = np.where(content_rows)[0]
+        content_col_indices = np.where(content_cols)[0]
+        
+        if len(content_row_indices) == 0 or len(content_col_indices) == 0:
+            # No content found, use full image
             return 0, 0, width, height
+        
+        min_y = content_row_indices[0]
+        max_y = content_row_indices[-1]
+        min_x = content_col_indices[0]
+        max_x = content_col_indices[-1]
         
         return min_x, min_y, max_x, max_y
     
@@ -491,28 +478,40 @@ class SeparatorSplitter:
     
     def process_product_image(self, image: np.ndarray, debug_info: Dict = None) -> np.ndarray:
         """Process product image with auto-crop and 4:5 ratio enforcement"""
-        processed = image.copy()
-        
-        if debug_info:
-            debug_info['original_size'] = (image.shape[1], image.shape[0])
-        
-        # Auto-crop to remove white space
-        if self.auto_crop:
-            bounds = self.detect_content_bounds(processed)
+        try:
+            processed = image.copy()
+            
             if debug_info:
-                debug_info['content_bounds'] = bounds
-            processed = self.auto_crop_image(processed)
-            if debug_info:
-                debug_info['after_crop_size'] = (processed.shape[1], processed.shape[0])
-        
-        # Enforce 4:5 aspect ratio
-        if self.force_4_5_ratio:
-            processed = self.enforce_4_5_ratio(processed)
-            if debug_info:
-                debug_info['final_size'] = (processed.shape[1], processed.shape[0])
-                debug_info['aspect_ratio'] = '4:5'
-        
-        return processed
+                debug_info['original_size'] = (image.shape[1], image.shape[0])
+            
+            print(f"Processing image of size {image.shape[1]}x{image.shape[0]}")
+            
+            # Auto-crop to remove white space
+            if self.auto_crop:
+                print("Detecting content bounds...")
+                bounds = self.detect_content_bounds(processed)
+                if debug_info:
+                    debug_info['content_bounds'] = bounds
+                processed = self.auto_crop_image(processed)
+                if debug_info:
+                    debug_info['after_crop_size'] = (processed.shape[1], processed.shape[0])
+                print(f"After crop: {processed.shape[1]}x{processed.shape[0]}")
+            
+            # Enforce 4:5 aspect ratio
+            if self.force_4_5_ratio:
+                print("Enforcing 4:5 ratio...")
+                processed = self.enforce_4_5_ratio(processed)
+                if debug_info:
+                    debug_info['final_size'] = (processed.shape[1], processed.shape[0])
+                    debug_info['aspect_ratio'] = '4:5'
+                print(f"Final size: {processed.shape[1]}x{processed.shape[0]}")
+            
+            return processed
+            
+        except Exception as e:
+            print(f"Error processing image: {e}")
+            # Return original image if processing fails
+            return image
     
     def create_products_from_segments(self, segments):
         """Create product images by combining segments from different source images"""
@@ -524,10 +523,17 @@ class SeparatorSplitter:
         
         print(f"Total segments: {len(all_segments)}")
         
-        # Create products by pairing segments
+        # Create products by pairing segments - with progress tracking
+        total_combinations = len(all_segments) - 1
+        processed = 0
+        
         for i in range(len(all_segments) - 1):
             current_segment = all_segments[i]
             next_segment = all_segments[i + 1]
+            
+            processed += 1
+            if processed % 5 == 0 or processed == total_combinations:
+                print(f"Processing combination {processed}/{total_combinations}")
             
             # Skip if both segments are from the same image
             if current_segment['source_index'] == next_segment['source_index']:
@@ -536,11 +542,17 @@ class SeparatorSplitter:
             print(f"Pairing: {current_segment['source_image']} seg{current_segment['segment_index']} + {next_segment['source_image']} seg{next_segment['segment_index']}")
             
             # Create product by combining current (bottom) with next (top)
-            product = self.combine_segments(current_segment, next_segment, product_id)
-            if product:
-                products.append(product)
-                product_id += 1
+            try:
+                product = self.combine_segments(current_segment, next_segment, product_id)
+                if product:
+                    products.append(product)
+                    product_id += 1
+                    print(f"Created product {product_id - 1}")
+            except Exception as e:
+                print(f"Error creating product {product_id}: {e}")
+                continue
         
+        print(f"Finished creating {len(products)} products")
         return products
     
     def create_single_segment_product(self, segment, product_id):
@@ -558,10 +570,13 @@ class SeparatorSplitter:
             cv2.imwrite(str(output_path), processed_img)
             
             # Save debug image if different from original
-            if not np.array_equal(processed_img, segment_img):
-                debug_filename = f"debug_product_{product_id}.png"
-                debug_path = self.result_dir / debug_filename
-                self.create_product_debug_image(segment_img, processed_img, debug_info, debug_path)
+            try:
+                if not np.array_equal(processed_img, segment_img):
+                    debug_filename = f"debug_product_{product_id}.png"
+                    debug_path = self.result_dir / debug_filename
+                    self.create_product_debug_image(segment_img, processed_img, debug_info, debug_path)
+            except Exception as e:
+                print(f"Warning: Could not create debug image: {e}")
             
             height, width = processed_img.shape[:2]
             
@@ -615,10 +630,13 @@ class SeparatorSplitter:
             cv2.imwrite(str(output_path), processed_img)
             
             # Save debug image if different from original  
-            if not np.array_equal(processed_img, combined):
-                debug_filename = f"debug_product_{product_id}.png"
-                debug_path = self.result_dir / debug_filename
-                self.create_product_debug_image(combined, processed_img, debug_info, debug_path)
+            try:
+                if not np.array_equal(processed_img, combined):
+                    debug_filename = f"debug_product_{product_id}.png"
+                    debug_path = self.result_dir / debug_filename
+                    self.create_product_debug_image(combined, processed_img, debug_info, debug_path)
+            except Exception as e:
+                print(f"Warning: Could not create debug image: {e}")
             
             height, width = processed_img.shape[:2]
             
