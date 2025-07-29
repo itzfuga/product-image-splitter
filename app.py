@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Flask Web Application for Outfit Image Grouper
+Flask Web Application for Outfit Image Grouper with White Separator Stitching
 """
 
 from flask import Flask, request, jsonify, render_template, send_file, session
