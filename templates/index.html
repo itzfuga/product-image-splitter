@@ -952,8 +952,18 @@
         
         function showResults(results) {
             console.log('showResults called with:', results);
-            progressSection.classList.remove('active');
-            resultsSection.classList.add('active');
+            console.log('progressSection element:', progressSection);
+            console.log('resultsSection element:', resultsSection);
+            
+            try {
+                progressSection.classList.remove('active');
+                console.log('Removed active class from progress section');
+                
+                resultsSection.classList.add('active');
+                console.log('Added active class to results section');
+            } catch (error) {
+                console.error('Error manipulating DOM classes:', error);
+            }
             
             // Store results in localStorage for download function
             localStorage.setItem(`results_${currentSessionId}`, JSON.stringify(results));
@@ -985,8 +995,15 @@
             `;
             
             // Update results grid
-            resultsGrid.innerHTML = '';
-            results.products.forEach(product => {
+            console.log('Updating results grid with products:', results.products);
+            console.log('resultsGrid element:', resultsGrid);
+            
+            try {
+                resultsGrid.innerHTML = '';
+                console.log('Cleared results grid');
+                
+                results.products.forEach((product, index) => {
+                    console.log(`Processing product ${index}:`, product);
                 const item = document.createElement('div');
                 item.className = 'result-item';
                 
@@ -1030,8 +1047,16 @@
                     </div>
                     ` : ''}
                 `;
+                
+                console.log(`Appending product ${index} to grid`);
                 resultsGrid.appendChild(item);
+                console.log(`Successfully appended product ${index}`);
             });
+            
+            console.log('Finished processing all products');
+            } catch (error) {
+                console.error('Error in results grid rendering:', error);
+            }
             
             // Setup debug toggle
             const debugToggle = document.getElementById('showDebugImages');
