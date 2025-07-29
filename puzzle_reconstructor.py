@@ -195,98 +195,76 @@ class PuzzleReconstructor:
             'component_scores': similarity_scores
         }
     
+    def find_sequential_groups(self, images):
+        """Group images sequentially based on Taobao upload patterns"""
+        print(f"Analyzing {len(images)} images for sequential grouping...")
+        
+        # First, detect the most likely group size by looking at image similarity patterns
+        group_size = self.detect_group_size(images)
+        print(f"Detected group size: {group_size} images per product")
+        
+        groups = []
+        current_group = []
+        
+        for i, img in enumerate(images):
+            current_group.append({
+                'image_index': i,
+                'image_name': img['name'],
+                'similarity_to_next': 0
+            })
+            
+            # If we've reached the group size or this is the last image
+            if len(current_group) == group_size or i == len(images) - 1:
+                if len(current_group) > 0:
+                    group_names = " + ".join([item['image_name'] for item in current_group])
+                    print(f"Created group: {group_names}")
+                    groups.append(current_group)
+                    current_group = []
+        
+        print(f"Created {len(groups)} sequential groups")
+        return groups
+    
+    def detect_group_size(self, images):
+        """Detect how many images typically form one product"""
+        # For now, use a simple heuristic based on total image count
+        # This can be made smarter later with actual image analysis
+        
+        total_images = len(images)
+        
+        # Common Taobao patterns
+        if total_images <= 3:
+            return 1  # Each image is standalone
+        elif total_images <= 6:
+            return 2  # Pairs of images
+        elif total_images <= 12:
+            # Check if divisible by 2 or 3
+            if total_images % 2 == 0:
+                return 2
+            elif total_images % 3 == 0:
+                return 3
+            else:
+                return 2  # Default to pairs
+        else:
+            # For larger sets, prefer smaller groups
+            if total_images % 2 == 0:
+                return 2
+            elif total_images % 3 == 0:
+                return 3
+            else:
+                return 2
+    
     def find_potential_connections(self, images):
-        """Find all potential connections between images"""
-        connections = []
-        
-        print(f"Analyzing {len(images)} images for potential connections...")
-        
-        for i, img1 in enumerate(images):
-            print(f"Analyzing image {i+1}: {img1['name']}")
-            
-            # Extract bottom edge features of current image
-            bottom_features = self.extract_edge_features(img1['cv2_image'], 'bottom')
-            bottom_edge_info = self.detect_edge_type(img1['cv2_image'], 'bottom')
-            
-            # Only consider connecting if the bottom edge looks "cut off"
-            if not bottom_edge_info['is_likely_cut']:
-                print(f"  Bottom edge looks natural (cut_score: {bottom_edge_info['cut_score']:.2f}), skipping connections")
-                continue
-            
-            for j, img2 in enumerate(images):
-                if i >= j:  # Avoid self-comparison and duplicates
-                    continue
-                
-                # Extract top edge features of candidate next image
-                top_features = self.extract_edge_features(img2['cv2_image'], 'top')
-                top_edge_info = self.detect_edge_type(img2['cv2_image'], 'top')
-                
-                # Only consider if the top edge also looks "cut off"
-                if not top_edge_info['is_likely_cut']:
-                    continue
-                
-                # Calculate similarity between bottom of img1 and top of img2
-                similarity = self.calculate_edge_similarity(bottom_features, top_features)
-                
-                if similarity['overall_similarity'] > self.similarity_threshold:
-                    connection = {
-                        'from_image': i,
-                        'to_image': j,
-                        'from_name': img1['name'],
-                        'to_name': img2['name'],
-                        'similarity': similarity['overall_similarity'],
-                        'detailed_similarity': similarity,
-                        'from_edge_info': bottom_edge_info,
-                        'to_edge_info': top_edge_info
-                    }
-                    connections.append(connection)
-                    print(f"  Found connection: {img1['name']} -> {img2['name']} (similarity: {similarity['overall_similarity']:.3f})")
-        
-        # Sort connections by similarity score (best first)
-        connections.sort(key=lambda x: x['similarity'], reverse=True)
-        
-        print(f"Found {len(connections)} potential connections")
-        return connections
+        """Legacy function - now redirects to sequential grouping"""
+        return []  # No connections needed for sequential grouping
     
     def build_image_chains(self, images, connections):
-        """Build chains of connected images using dynamic programming approach"""
-        print("Building image chains from connections...")
+        """Build sequential chains from grouped images"""
+        print("Building sequential image groups...")
         
-        # Create adjacency list
-        graph = {i: [] for i in range(len(images))}
-        for conn in connections:
-            graph[conn['from_image']].append({
-                'to': conn['to_image'],
-                'similarity': conn['similarity'],
-                'connection': conn
-            })
+        # Use sequential grouping instead of complex edge matching
+        chains = self.find_sequential_groups(images)
         
-        chains = []
-        used_images = set()
-        
-        # Try starting a chain from each unused image
-        for start_idx in range(len(images)):
-            if start_idx in used_images:
-                continue
-            
-            # Build the best chain starting from this image
-            chain = self.build_best_chain(start_idx, graph, used_images.copy())
-            
-            if len(chain) > 1:  # Only consider chains with multiple images
-                chains.append(chain)
-                # Mark images in this chain as used
-                for img_idx in [c['image_index'] for c in chain]:
-                    used_images.add(img_idx)
-                    
-                chain_names = " -> ".join([c['image_name'] for c in chain])
-                print(f"Built chain: {chain_names}")
-            elif len(chain) == 1:
-                # Single image - might be standalone
-                chains.append(chain)
-                used_images.add(start_idx)
-                print(f"Standalone image: {chain[0]['image_name']}")
-        
-        print(f"Built {len(chains)} chains total")
+        print(f"Built {len(chains)} sequential groups total")
         return chains
     
     def build_best_chain(self, start_idx, graph, used_images):

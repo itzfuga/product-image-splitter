@@ -87,13 +87,13 @@ def process_puzzle_async(session_id, upload_dir, result_dir):
         processing_status[session_id]['progress'] = 30
         processing_status[session_id]['message'] = f'Finding connections between {len(images)} images...'
         
-        # Find potential connections
+        # Find potential connections (now uses sequential grouping)
         connections = reconstructor.find_potential_connections(images)
         
         processing_status[session_id]['progress'] = 60
-        processing_status[session_id]['message'] = f'Building chains from {len(connections)} connections...'
+        processing_status[session_id]['message'] = f'Building sequential groups...'
         
-        # Build image chains
+        # Build image chains (now creates sequential groups)
         chains = reconstructor.build_image_chains(images, connections)
         
         processing_status[session_id]['progress'] = 80

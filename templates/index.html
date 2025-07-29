@@ -400,7 +400,7 @@
         <div class="mode-selector">
             <div class="mode-buttons">
                 <button class="mode-btn active" data-mode="separator">Separator Splitting</button>
-                <button class="mode-btn" data-mode="puzzle">Puzzle Reconstruction</button>
+                <button class="mode-btn" data-mode="puzzle">Sequential Grouping</button>
             </div>
             <div class="mode-description" id="modeDescription">
                 Split images using separator detection (STAFF EXCEED text or visual lines)
@@ -477,18 +477,18 @@
         // Mode descriptions
         const modeDescriptions = {
             separator: 'Split images using separator detection (STAFF EXCEED text or visual lines)',
-            puzzle: 'Reconstruct fragmented Taobao product images by matching edges and combining pieces'
+            puzzle: 'Group consecutive Taobao product images sequentially (2-3 images per product)'
         };
         
         // Upload area text for different modes
         const uploadTexts = {
             separator: 'Drop images with separators here',
-            puzzle: 'Drop fragmented product images here'
+            puzzle: 'Drop sequential product images here'
         };
         
         const uploadHints = {
             separator: 'Detects "STAFF/START EXCEED END" text or visual separator lines • JPG, PNG, WEBP, AVIF',
-            puzzle: 'Automatically matches and combines image fragments • JPG, PNG, WEBP, AVIF'
+            puzzle: 'Groups images in upload order (1+2, 3+4, etc.) • JPG, PNG, WEBP, AVIF'
         };
         
         // Mode switching functionality
