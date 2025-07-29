@@ -453,34 +453,23 @@
         let currentSessionId = null;
         let pollInterval = null;
         
-        // DOM elements - initialized after DOM is ready
-        let uploadArea, fileInput, uploadBtn, progressSection, progressFill, statusMessage, logArea;
-        let resultsSection, successMessage, resultsStats, resultsGrid, downloadAllBtn;
-        let modeButtons, modeDescription, uploadText, uploadHint;
-        
-        // Initialize DOM elements
-        function initializeDOMElements() {
-            uploadArea = document.getElementById('uploadArea');
-            fileInput = document.getElementById('fileInput');
-            uploadBtn = document.getElementById('uploadBtn');
-            progressSection = document.getElementById('progressSection');
-            progressFill = document.getElementById('progressFill');
-            statusMessage = document.getElementById('statusMessage');
-            logArea = document.getElementById('logArea');
-            resultsSection = document.getElementById('resultsSection');
-            successMessage = document.getElementById('successMessage');
-            resultsStats = document.getElementById('resultsStats');
-            resultsGrid = document.getElementById('resultsGrid');
-            downloadAllBtn = document.getElementById('downloadAllBtn');
-            modeButtons = document.querySelectorAll('.mode-btn');
-            modeDescription = document.getElementById('modeDescription');
-            uploadText = document.getElementById('uploadText');
-            uploadHint = document.getElementById('uploadHint');
-            
-            console.log('DOM elements initialized:', {
-                uploadArea, progressSection, resultsSection, resultsGrid
-            });
-        }
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const statusMessage = document.getElementById('statusMessage');
+        const logArea = document.getElementById('logArea');
+        const resultsSection = document.getElementById('resultsSection');
+        const successMessage = document.getElementById('successMessage');
+        const resultsStats = document.getElementById('resultsStats');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const modeDescription = document.getElementById('modeDescription');
+        const uploadText = document.getElementById('uploadText');
+        const uploadHint = document.getElementById('uploadHint');
         
         // Current processing mode
         let currentMode = 'separator';
