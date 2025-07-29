@@ -537,6 +537,68 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 30px rgba(255, 107, 107, 0.4);
         }
+        
+        .debug-section {
+            display: none;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .debug-section.active {
+            display: block;
+        }
+        
+        .debug-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .debug-item {
+            background: #333;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .debug-canvas {
+            width: 100%;
+            border: 2px solid #444;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: white;
+        }
+        
+        .debug-info {
+            font-size: 12px;
+            color: #ccc;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .debug-info div {
+            margin: 5px 0;
+        }
+        
+        .debug-label {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+        
+        .segment-overlay {
+            position: absolute;
+            border: 2px solid #ff6b6b;
+            background: rgba(255, 107, 107, 0.2);
+            pointer-events: none;
+        }
+        
+        .content-bounds-overlay {
+            position: absolute;
+            border: 2px solid #4ecdc4;
+            background: rgba(78, 205, 196, 0.1);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -596,6 +658,13 @@
                     <option value="#e0e0e0">Grau</option>
                 </select>
             </div>
+            <div class="setting-row">
+                <span class="setting-label">Debug-Modus (zeigt Segmente und Erkennungsbereiche)</span>
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="debugMode">
+                    <label for="debugMode">Aktiviert</label>
+                </div>
+            </div>
         </div>
         
         <div class="preview-section" id="previewSection">
@@ -632,6 +701,12 @@
             <button class="download-all-btn" id="downloadAllBtn">📦 Alle Produkte herunterladen</button>
         </div>
         
+        <div class="debug-section" id="debugSection">
+            <h3>🔍 Debug-Analyse</h3>
+            <button class="download-btn" onclick="downloadDebugData()" style="margin-bottom: 20px;">💾 Debug-Report herunterladen</button>
+            <div class="debug-grid" id="debugGrid"></div>
+        </div>
+        
         <div class="log-section">
             <h3>📝 Verarbeitungsprotokoll</h3>
             <div id="logContainer"></div>
@@ -645,6 +720,7 @@
         let groupingMode = 'auto';
         let manualGroups = [];
         let worker = null;
+        let debugData = [];
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1001,6 +1077,7 @@
             addLog('Starte Verarbeitung...', 'info');
             
             processedProducts = [];
+            debugData = [];
             
             if (groupingMode === 'ocr') {
                 await processWithOCR();
@@ -1011,6 +1088,12 @@
             }
             
             displayResults();
+            
+            // Display debug info if enabled
+            if (document.getElementById('debugMode').checked) {
+                displayDebugInfo();
+            }
+            
             processButton.disabled = false;
         }
         
@@ -1219,6 +1302,118 @@
             
             return { minX, minY, maxX, maxY };
         }
+        
+        function displayDebugInfo() {
+            const debugSection = document.getElementById('debugSection');
+            const debugGrid = document.getElementById('debugGrid');
+            
+            debugSection.classList.add('active');
+            debugGrid.innerHTML = '';
+            
+            debugData.forEach((data, index) => {
+                const debugItem = document.createElement('div');
+                debugItem.className = 'debug-item';
+                
+                // Create debug canvases
+                const tempCanvas = createCanvasFromDataUrl(data.tempCanvas);
+                const finalCanvas = createCanvasFromDataUrl(data.finalCanvas);
+                
+                // Draw debug overlays on temp canvas
+                const debugCanvas = document.createElement('canvas');
+                const debugCtx = debugCanvas.getContext('2d');
+                debugCanvas.width = tempCanvas.width;
+                debugCanvas.height = tempCanvas.height;
+                debugCanvas.className = 'debug-canvas';
+                
+                // Draw original image
+                debugCtx.drawImage(tempCanvas, 0, 0);
+                
+                // Draw segment boundaries
+                debugCtx.strokeStyle = '#ff6b6b';
+                debugCtx.lineWidth = 2;
+                debugCtx.setLineDash([5, 5]);
+                
+                data.segments.forEach((segment, idx) => {
+                    debugCtx.beginPath();
+                    debugCtx.rect(0, segment.drawY, debugCanvas.width, segment.pixelHeight);
+                    debugCtx.stroke();
+                    
+                    // Label
+                    debugCtx.fillStyle = '#ff6b6b';
+                    debugCtx.font = '14px Arial';
+                    debugCtx.fillText(`Segment ${idx + 1}`, 10, segment.drawY + 20);
+                });
+                
+                // Draw content bounds
+                debugCtx.strokeStyle = '#4ecdc4';
+                debugCtx.lineWidth = 3;
+                debugCtx.setLineDash([]);
+                debugCtx.beginPath();
+                debugCtx.rect(
+                    data.bounds.minX,
+                    data.bounds.minY,
+                    data.bounds.maxX - data.bounds.minX,
+                    data.bounds.maxY - data.bounds.minY
+                );
+                debugCtx.stroke();
+                
+                // Create info HTML
+                debugItem.innerHTML = `
+                    <h4 style="color: #4ecdc4; margin-bottom: 15px;">Produkt ${data.productIndex} Debug</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <div class="debug-label">Original mit Segmenten & Bounds:</div>
+                            ${debugCanvas.outerHTML}
+                        </div>
+                        <div>
+                            <div class="debug-label">Finales Ergebnis:</div>
+                            <canvas class="debug-canvas" id="final-${index}"></canvas>
+                        </div>
+                    </div>
+                    <div class="debug-info">
+                        <div><span class="debug-label">Segmente:</span> ${data.segments.length}</div>
+                        <div><span class="debug-label">Original Größe:</span> ${data.originalDimensions.width}x${data.originalDimensions.height}px</div>
+                        <div><span class="debug-label">Content Bounds:</span> (${data.bounds.minX}, ${data.bounds.minY}) bis (${data.bounds.maxX}, ${data.bounds.maxY})</div>
+                        <div><span class="debug-label">Content Größe:</span> ${data.measurements.contentWidth}x${data.measurements.contentHeight}px</div>
+                        <div><span class="debug-label">Finale Größe:</span> ${data.measurements.finalWidth}x${data.measurements.finalHeight}px</div>
+                        <div><span class="debug-label">Offset:</span> (${Math.round(data.measurements.offsetX)}, ${Math.round(data.measurements.offsetY)})</div>
+                        <div><span class="debug-label">Padding:</span> ${data.measurements.padding}px</div>
+                        <div><span class="debug-label">Aspect Ratio:</span> ${data.measurements.ratio}</div>
+                    </div>
+                    <div class="debug-info" style="margin-top: 10px;">
+                        <div class="debug-label">Segment Details:</div>
+                        ${data.segments.map(seg => `
+                            <div style="margin-left: 20px; font-size: 11px;">
+                                ${seg.imageName}: Y ${Math.round(seg.startY * 100)}-${Math.round(seg.endY * 100)}% 
+                                (Pixel ${seg.pixelStartY}-${seg.pixelStartY + seg.pixelHeight})
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                debugGrid.appendChild(debugItem);
+                
+                // Draw final canvas
+                const finalCanvasElement = document.getElementById(`final-${index}`);
+                const finalCtx = finalCanvasElement.getContext('2d');
+                finalCanvasElement.width = finalCanvas.width;
+                finalCanvasElement.height = finalCanvas.height;
+                finalCtx.drawImage(finalCanvas, 0, 0);
+            });
+            
+            addLog(`Debug-Informationen für ${debugData.length} Produkte angezeigt`, 'info');
+        }
+        
+        function createCanvasFromDataUrl(dataUrl) {
+            const img = new Image();
+            img.src = dataUrl;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            return canvas;
+        }
 
         async function createProductImage(segments, productIndex) {
             if (segments.length === 0) return;
@@ -1228,6 +1423,17 @@
             const force45Ratio = document.getElementById('force45Ratio').checked;
             const contentPadding = parseInt(document.getElementById('contentPadding').value) || 20;
             const backgroundColor = document.getElementById('backgroundColor').value;
+            const debugMode = document.getElementById('debugMode').checked;
+            
+            // Debug data for this product
+            const productDebugData = {
+                productIndex,
+                segments: [],
+                tempCanvas: null,
+                bounds: null,
+                finalCanvas: null,
+                measurements: {}
+            };
             
             // Calculate total height needed
             let totalHeight = 0;
@@ -1263,10 +1469,33 @@
                 );
                 
                 currentY += sourceHeight;
+                
+                // Store segment info for debug
+                if (debugMode) {
+                    productDebugData.segments.push({
+                        index: idx,
+                        imageName: segment.image.file.name,
+                        startY: segment.startY,
+                        endY: segment.endY,
+                        pixelStartY: sourceY,
+                        pixelHeight: sourceHeight,
+                        drawY: currentY - sourceHeight
+                    });
+                }
             });
             
             // Detect content bounds with less aggressive cropping
             const bounds = detectContentBounds(tempCanvas, tempCtx);
+            
+            // Store debug info
+            if (debugMode) {
+                productDebugData.tempCanvas = tempCanvas.toDataURL('image/png');
+                productDebugData.bounds = { ...bounds };
+                productDebugData.originalDimensions = {
+                    width: tempCanvas.width,
+                    height: tempCanvas.height
+                };
+            }
             
             // Calculate content dimensions
             let contentWidth = bounds.maxX - bounds.minX;
@@ -1318,6 +1547,22 @@
                 bounds.minX, bounds.minY, contentWidth, contentHeight,
                 offsetX, offsetY, contentWidth, contentHeight
             );
+            
+            // Save debug data
+            if (debugMode) {
+                productDebugData.finalCanvas = finalCanvas.toDataURL('image/png');
+                productDebugData.measurements = {
+                    contentWidth,
+                    contentHeight,
+                    finalWidth: finalCanvas.width,
+                    finalHeight: finalCanvas.height,
+                    offsetX,
+                    offsetY,
+                    padding: contentPadding,
+                    ratio: force45Ratio ? '4:5' : `${Math.round(finalCanvas.width/finalCanvas.height * 100)/100}:1`
+                };
+                debugData.push(productDebugData);
+            }
             
             // Save product
             processedProducts.push({
@@ -1390,6 +1635,39 @@
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
             logContainer.appendChild(entry);
             logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function downloadDebugData() {
+            if (debugData.length === 0) {
+                addLog('Keine Debug-Daten vorhanden', 'warning');
+                return;
+            }
+            
+            // Create a comprehensive debug report
+            const report = {
+                timestamp: new Date().toISOString(),
+                settings: {
+                    force45Ratio: document.getElementById('force45Ratio').checked,
+                    contentPadding: document.getElementById('contentPadding').value,
+                    backgroundColor: document.getElementById('backgroundColor').value
+                },
+                products: debugData.map(data => ({
+                    productIndex: data.productIndex,
+                    segments: data.segments,
+                    bounds: data.bounds,
+                    measurements: data.measurements
+                }))
+            };
+            
+            // Download as JSON
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `debug_report_${new Date().getTime()}.json`;
+            link.click();
+            
+            addLog('Debug-Report heruntergeladen', 'success');
         }
         
         // Clean up on page unload
