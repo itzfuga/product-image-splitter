@@ -196,33 +196,130 @@ class PuzzleReconstructor:
         }
     
     def find_sequential_groups(self, images):
-        """Group images sequentially based on Taobao upload patterns"""
-        print(f"Analyzing {len(images)} images for sequential grouping...")
-        
-        # First, detect the most likely group size by looking at image similarity patterns
-        group_size = self.detect_group_size(images)
-        print(f"Detected group size: {group_size} images per product")
+        """Intelligently group images - standalone complete images or fragment pairs ONLY"""
+        print(f"Analyzing {len(images)} images for intelligent grouping...")
         
         groups = []
-        current_group = []
+        i = 0
         
-        for i, img in enumerate(images):
-            current_group.append({
-                'image_index': i,
-                'image_name': img['name'],
-                'similarity_to_next': 0
-            })
+        while i < len(images):
+            current_img = images[i]
             
-            # If we've reached the group size or this is the last image
-            if len(current_group) == group_size or i == len(images) - 1:
-                if len(current_group) > 0:
-                    group_names = " + ".join([item['image_name'] for item in current_group])
-                    print(f"Created group: {group_names}")
-                    groups.append(current_group)
-                    current_group = []
+            # Check if current image looks complete (full body, natural bottom edge)
+            is_complete = self.is_complete_image(current_img['cv2_image'])
+            
+            if is_complete:
+                # Standalone complete image
+                groups.append([{
+                    'image_index': i,
+                    'image_name': current_img['name'],
+                    'similarity_to_next': 0
+                }])
+                print(f"Standalone complete image: {current_img['name']}")
+                i += 1
+                
+            else:
+                # This is a fragment - try to pair it with the next image
+                if i + 1 < len(images):
+                    next_img = images[i + 1]
+                    
+                    # Check if they should be paired (same model/outfit)
+                    should_pair = self.should_pair_fragments(current_img['cv2_image'], next_img['cv2_image'])
+                    
+                    if should_pair:
+                        # Create a pair
+                        groups.append([
+                            {
+                                'image_index': i,
+                                'image_name': current_img['name'],
+                                'similarity_to_next': 0.9
+                            },
+                            {
+                                'image_index': i + 1,
+                                'image_name': next_img['name'],
+                                'similarity_to_next': 0
+                            }
+                        ])
+                        print(f"Paired fragments: {current_img['name']} + {next_img['name']}")
+                        i += 2  # Skip next image since we used it
+                    else:
+                        # Treat as standalone fragment
+                        groups.append([{
+                            'image_index': i,
+                            'image_name': current_img['name'],
+                            'similarity_to_next': 0
+                        }])
+                        print(f"Standalone fragment: {current_img['name']}")
+                        i += 1
+                else:
+                    # Last image and it's a fragment
+                    groups.append([{
+                        'image_index': i,
+                        'image_name': current_img['name'],
+                        'similarity_to_next': 0
+                    }])
+                    print(f"Final standalone fragment: {current_img['name']}")
+                    i += 1
         
-        print(f"Created {len(groups)} sequential groups")
+        print(f"Created {len(groups)} intelligent groups")
         return groups
+    
+    def is_complete_image(self, image):
+        """Detect if an image is complete (full body) or a fragment"""
+        height, width = image.shape[:2]
+        
+        # Check aspect ratio - complete images are usually taller
+        aspect_ratio = height / width
+        
+        # Check bottom edge for signs of being cut off
+        bottom_edge_info = self.detect_edge_type(image, 'bottom')
+        
+        # Complete image criteria:
+        # 1. Good aspect ratio (not too wide/short)
+        # 2. Natural bottom edge (low cut score)
+        # 3. Reasonable height (not just a head shot)
+        
+        is_good_ratio = aspect_ratio > 1.2  # Taller than wide
+        is_natural_bottom = bottom_edge_info['cut_score'] < 0.3
+        is_reasonable_height = height > 800  # Minimum reasonable height
+        
+        is_complete = is_good_ratio and is_natural_bottom and is_reasonable_height
+        
+        print(f"  Image analysis: ratio={aspect_ratio:.2f}, cut_score={bottom_edge_info['cut_score']:.2f}, height={height}, complete={is_complete}")
+        
+        return is_complete
+    
+    def should_pair_fragments(self, img1, img2):
+        """Determine if two fragments should be paired together"""
+        # For now, use a simple heuristic:
+        # - Images should be similar in width
+        # - Color palette should be similar (same outfit/background)
+        
+        height1, width1 = img1.shape[:2]  
+        height2, width2 = img2.shape[:2]
+        
+        # Width similarity
+        width_ratio = min(width1, width2) / max(width1, width2)
+        width_similar = width_ratio > 0.8
+        
+        # Color similarity (simple approach using mean colors)
+        mean_color1 = np.mean(img1.reshape(-1, 3), axis=0)
+        mean_color2 = np.mean(img2.reshape(-1, 3), axis=0)
+        color_diff = np.linalg.norm(mean_color1 - mean_color2)
+        color_similar = color_diff < 50  # Threshold for similar colors
+        
+        # Check if first image looks like top part and second looks like bottom part
+        top_edge_info = self.detect_edge_type(img1, 'bottom')  # Bottom of first image
+        bottom_edge_info = self.detect_edge_type(img2, 'top')  # Top of second image
+        
+        # Both should look "cut off" to be good candidates for pairing
+        both_cut = top_edge_info['is_likely_cut'] and bottom_edge_info['is_likely_cut']
+        
+        should_pair = width_similar and color_similar and both_cut
+        
+        print(f"  Pairing analysis: width_sim={width_similar}, color_sim={color_similar}, both_cut={both_cut}, result={should_pair}")
+        
+        return should_pair
     
     def detect_group_size(self, images):
         """Detect how many images typically form one product"""
