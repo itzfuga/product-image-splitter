@@ -12,6 +12,8 @@ from pathlib import Path
 import json
 from typing import List, Dict, Tuple, Optional
 import re
+from smart_matcher import SmartMatcher
+from smart_stitcher import SmartStitcher
 
 
 class PuzzleReconstructor:
@@ -30,6 +32,10 @@ class PuzzleReconstructor:
         self.auto_crop = True
         self.background_color = (255, 255, 255)  # White background
         self.content_padding = 20
+        
+        # Initialize smart components
+        self.smart_matcher = SmartMatcher()
+        self.smart_stitcher = SmartStitcher(result_dir, session_id)
         
     def load_images(self, image_dir):
         """Load all images from directory with natural sorting"""
@@ -196,65 +202,13 @@ class PuzzleReconstructor:
         }
     
     def find_sequential_groups(self, images):
-        """Group images based on fragment + full pattern with outfit matching"""
-        print(f"Analyzing {len(images)} images for Taobao fragment pairing...")
+        """Group images based on smart visual matching with chronological constraints"""
+        print(f"Using smart matching for {len(images)} images...")
         
-        groups = []
-        i = 0
+        # Use smart matcher with chronological constraints
+        groups = self.smart_matcher.find_smart_pairs(images)
         
-        while i < len(images):
-            current_img = images[i]
-            
-            # Check if current image is a fragment (partial upper body)
-            is_fragment = self.is_fragment_image(current_img['cv2_image'])
-            
-            if is_fragment and i + 1 < len(images):
-                next_img = images[i + 1]
-                
-                # Check if fragment and next image show the same outfit
-                same_outfit = self.check_outfit_match(current_img['cv2_image'], next_img['cv2_image'])
-                
-                if same_outfit:
-                    # Pair fragment with next image (same outfit)
-                    groups.append([
-                        {
-                            'image_index': i,
-                            'image_name': current_img['name'],
-                            'similarity_to_next': 0.9
-                        },
-                        {
-                            'image_index': i + 1,
-                            'image_name': next_img['name'],
-                            'similarity_to_next': 0
-                        }
-                    ])
-                    print(f"Fragment pair: {current_img['name']} (fragment) + {next_img['name']} (same outfit)")
-                    i += 2  # Skip next image since we used it
-                else:
-                    # Different outfits - treat fragment as standalone
-                    groups.append([{
-                        'image_index': i,
-                        'image_name': current_img['name'],
-                        'similarity_to_next': 0
-                    }])
-                    print(f"Standalone fragment: {current_img['name']} (different outfit from next)")
-                    i += 1
-                
-            else:
-                # Standalone complete image or final fragment
-                groups.append([{
-                    'image_index': i,
-                    'image_name': current_img['name'],
-                    'similarity_to_next': 0
-                }])
-                
-                if is_fragment:
-                    print(f"Final standalone fragment: {current_img['name']}")
-                else:
-                    print(f"Standalone complete image: {current_img['name']}")
-                i += 1
-        
-        print(f"Created {len(groups)} Taobao groups")
+        print(f"Smart matcher created {len(groups)} groups")
         return groups
     
     def is_fragment_image(self, image):
@@ -456,13 +410,12 @@ class PuzzleReconstructor:
         return left, top, right, bottom
     
     def stitch_images(self, images, chain):
-        """Stitch images for Taobao fragment reconstruction"""
-        if len(chain) <= 1:
-            # Single image - just use the full image as-is
+        """Process images for Taobao reconstruction using smart stitching"""
+        if len(chain) == 1:
+            # Single image - use as-is
             img_idx = chain[0]['image_index']
             image = images[img_idx]['cv2_image']
             
-            # For single images, just apply cropping and ratio
             if self.auto_crop:
                 left, top, right, bottom = self.detect_content_bounds(image)
                 cropped = image[top:bottom+1, left:right+1]
@@ -470,30 +423,121 @@ class PuzzleReconstructor:
             else:
                 return self.enforce_4_5_ratio(image) if self.force_4_5_ratio else image
         
-        # Two images: fragment + full image
-        # Strategy: Use the full image, but with better upper portion from fragment
+        elif len(chain) == 2:
+            # Two images: fragment + full image - use smart stitching
+            img1_idx = chain[0]['image_index']
+            img2_idx = chain[1]['image_index']
+            
+            img1 = images[img1_idx]['cv2_image']
+            img2 = images[img2_idx]['cv2_image']
+            
+            print(f"  Smart stitching pair: {chain[0]['image_name']} + {chain[1]['image_name']}")
+            
+            # Determine which is fragment and which is full
+            h1, w1 = img1.shape[:2]
+            h2, w2 = img2.shape[:2]
+            
+            if h1 < h2:
+                # img1 is fragment, img2 is full
+                fragment_img = img1
+                full_img = img2
+                fragment_type = self.smart_stitcher.detect_fragment_type(fragment_img, full_img)
+                print(f"    Fragment type detected: {fragment_type}")
+                
+                if fragment_type == 'full':
+                    # Not really a fragment, just use full image
+                    result = full_img
+                else:
+                    # Actually stitch them
+                    result = self.smart_stitcher.smart_stitch(fragment_img, full_img, fragment_type)
+            else:
+                # img2 might be fragment or they're similar size
+                if h2 < h1 * 0.7:
+                    # img2 is fragment
+                    fragment_img = img2
+                    full_img = img1
+                    fragment_type = self.smart_stitcher.detect_fragment_type(fragment_img, full_img)
+                    print(f"    Fragment type detected: {fragment_type}")
+                    result = self.smart_stitcher.smart_stitch(fragment_img, full_img, fragment_type)
+                else:
+                    # Similar sizes, just use img2 (the second one)
+                    result = img2
+            
+            # Apply cropping and ratio
+            if self.auto_crop:
+                left, top, right, bottom = self.detect_content_bounds(result)
+                result = result[top:bottom+1, left:right+1]
+            
+            if self.force_4_5_ratio:
+                result = self.enforce_4_5_ratio(result)
+            
+            return result
         
-        fragment_idx = chain[0]['image_index']
-        full_idx = chain[1]['image_index']
-        
-        fragment_img = images[fragment_idx]['cv2_image'].copy()
-        full_img = images[full_idx]['cv2_image'].copy()
-        
-        print(f"  Combining fragment ({fragment_img.shape}) with full image ({full_img.shape})")
-        
-        # For Taobao reconstruction, we primarily use the full image
-        # The fragment is mainly for reference, so we'll use the full image
-        result_img = full_img.copy()
-        
-        # Apply auto-crop and ratio enforcement
-        if self.auto_crop:
-            left, top, right, bottom = self.detect_content_bounds(result_img)
-            result_img = result_img[top:bottom+1, left:right+1]
-        
-        if self.force_4_5_ratio:
-            result_img = self.enforce_4_5_ratio(result_img)
-        
-        return result_img
+        elif len(chain) == 3:
+            # Three images: likely 5+6+7 pattern - stitch progressively
+            img1_idx = chain[0]['image_index']
+            img2_idx = chain[1]['image_index'] 
+            img3_idx = chain[2]['image_index']
+            
+            img1 = images[img1_idx]['cv2_image']
+            img2 = images[img2_idx]['cv2_image']
+            img3 = images[img3_idx]['cv2_image']
+            
+            print(f"  Smart stitching 3-image group: {chain[0]['image_name']} + {chain[1]['image_name']} + {chain[2]['image_name']}")
+            
+            # First, stitch the first two images
+            h1, h2 = img1.shape[0], img2.shape[0]
+            if h1 < h2:
+                # img1 is fragment, img2 is full
+                fragment_type = self.smart_stitcher.detect_fragment_type(img1, img2)
+                if fragment_type != 'full':
+                    intermediate_result = self.smart_stitcher.smart_stitch(img1, img2, fragment_type)
+                else:
+                    intermediate_result = img2
+            else:
+                # img2 might be fragment or similar size
+                if h2 < h1 * 0.7:
+                    fragment_type = self.smart_stitcher.detect_fragment_type(img2, img1)
+                    intermediate_result = self.smart_stitcher.smart_stitch(img2, img1, fragment_type)
+                else:
+                    intermediate_result = img2
+            
+            # Then stitch the intermediate result with the third image
+            h_int, h3 = intermediate_result.shape[0], img3.shape[0]
+            if h_int > h3:
+                # Third image might be a fragment to add to the intermediate result
+                if h3 < h_int * 0.7:
+                    fragment_type = self.smart_stitcher.detect_fragment_type(img3, intermediate_result)
+                    result = self.smart_stitcher.smart_stitch(img3, intermediate_result, fragment_type)
+                else:
+                    # Use the third image as it might be the final complete one
+                    result = img3
+            else:
+                # Intermediate result is smaller, use third image
+                result = img3
+            
+            # Apply cropping and ratio
+            if self.auto_crop:
+                left, top, right, bottom = self.detect_content_bounds(result)
+                result = result[top:bottom+1, left:right+1]
+            
+            if self.force_4_5_ratio:
+                result = self.enforce_4_5_ratio(result)
+            
+            return result
+            
+        else:
+            # More than 3 images - use the last image as it's likely the most complete
+            print(f"  WARNING: Chain has {len(chain)} images, using last one")
+            last_idx = chain[-1]['image_index']
+            image = images[last_idx]['cv2_image']
+            
+            if self.auto_crop:
+                left, top, right, bottom = self.detect_content_bounds(image)
+                cropped = image[top:bottom+1, left:right+1]
+                return self.enforce_4_5_ratio(cropped) if self.force_4_5_ratio else cropped
+            else:
+                return self.enforce_4_5_ratio(image) if self.force_4_5_ratio else image
     
     def enforce_4_5_ratio(self, image):
         """Force image to 4:5 aspect ratio with padding"""
