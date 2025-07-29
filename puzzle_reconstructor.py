@@ -196,7 +196,7 @@ class PuzzleReconstructor:
         }
     
     def find_sequential_groups(self, images):
-        """Group images based on fragment + full pattern from Taobao examples"""
+        """Group images based on fragment + full pattern with outfit matching"""
         print(f"Analyzing {len(images)} images for Taobao fragment pairing...")
         
         groups = []
@@ -209,24 +209,36 @@ class PuzzleReconstructor:
             is_fragment = self.is_fragment_image(current_img['cv2_image'])
             
             if is_fragment and i + 1 < len(images):
-                # Fragment + next image should form a complete product
                 next_img = images[i + 1]
                 
-                # Pair fragment with next image (which should be the full version)
-                groups.append([
-                    {
+                # Check if fragment and next image show the same outfit
+                same_outfit = self.check_outfit_match(current_img['cv2_image'], next_img['cv2_image'])
+                
+                if same_outfit:
+                    # Pair fragment with next image (same outfit)
+                    groups.append([
+                        {
+                            'image_index': i,
+                            'image_name': current_img['name'],
+                            'similarity_to_next': 0.9
+                        },
+                        {
+                            'image_index': i + 1,
+                            'image_name': next_img['name'],
+                            'similarity_to_next': 0
+                        }
+                    ])
+                    print(f"Fragment pair: {current_img['name']} (fragment) + {next_img['name']} (same outfit)")
+                    i += 2  # Skip next image since we used it
+                else:
+                    # Different outfits - treat fragment as standalone
+                    groups.append([{
                         'image_index': i,
                         'image_name': current_img['name'],
-                        'similarity_to_next': 0.9
-                    },
-                    {
-                        'image_index': i + 1,
-                        'image_name': next_img['name'],
                         'similarity_to_next': 0
-                    }
-                ])
-                print(f"Fragment pair: {current_img['name']} (fragment) + {next_img['name']} (full)")
-                i += 2  # Skip next image since we used it
+                    }])
+                    print(f"Standalone fragment: {current_img['name']} (different outfit from next)")
+                    i += 1
                 
             else:
                 # Standalone complete image or final fragment
@@ -268,6 +280,30 @@ class PuzzleReconstructor:
         print(f"  Fragment analysis: ratio={aspect_ratio:.2f}, cut_score={bottom_edge_info['cut_score']:.2f}, height={height}, fragment={is_fragment}")
         
         return is_fragment
+    
+    def check_outfit_match(self, img1, img2):
+        """Check if two images show the same outfit/clothing"""
+        # Simple approach: check if the overall color scheme is similar
+        # More sophisticated approach could use actual clothing detection
+        
+        # Get dominant colors from both images
+        mean_color1 = np.mean(img1.reshape(-1, 3), axis=0)
+        mean_color2 = np.mean(img2.reshape(-1, 3), axis=0)
+        
+        # Calculate color difference
+        color_diff = np.linalg.norm(mean_color1 - mean_color2)
+        
+        # Check standard deviation (texture similarity)
+        std1 = np.std(img1.reshape(-1, 3), axis=0)
+        std2 = np.std(img2.reshape(-1, 3), axis=0)
+        texture_diff = np.linalg.norm(std1 - std2)
+        
+        # Combine metrics
+        is_similar = color_diff < 30 and texture_diff < 20  # Thresholds may need tuning
+        
+        print(f"    Outfit match: color_diff={color_diff:.1f}, texture_diff={texture_diff:.1f}, match={is_similar}")
+        
+        return is_similar
     
     def should_pair_fragments(self, img1, img2):
         """Determine if two fragments should be paired together"""
