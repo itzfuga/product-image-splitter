@@ -13,6 +13,7 @@ import json
 import threading
 import time
 from separator_splitter import SeparatorSplitter
+from puzzle_reconstructor import PuzzleReconstructor
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -57,6 +58,119 @@ def cleanup_old_sessions():
                         shutil.rmtree(subfolder, ignore_errors=True)
     except Exception as e:
         print(f"Cleanup error: {e}")
+
+
+def process_puzzle_async(session_id, upload_dir, result_dir):
+    """Process puzzle reconstruction in background thread"""
+    try:
+        processing_status[session_id] = {
+            'status': 'processing',
+            'progress': 0,
+            'message': 'Initializing puzzle reconstruction...',
+            'results': None
+        }
+        
+        # Create puzzle reconstructor
+        reconstructor = PuzzleReconstructor(result_dir, session_id)
+        
+        # Update status
+        processing_status[session_id]['progress'] = 10
+        processing_status[session_id]['message'] = 'Loading images...'
+        
+        # Load images
+        images = reconstructor.load_images(upload_dir)
+        if not images:
+            processing_status[session_id]['status'] = 'error'
+            processing_status[session_id]['message'] = 'No valid images found'
+            return
+        
+        processing_status[session_id]['progress'] = 30
+        processing_status[session_id]['message'] = f'Finding connections between {len(images)} images...'
+        
+        # Find potential connections
+        connections = reconstructor.find_potential_connections(images)
+        
+        processing_status[session_id]['progress'] = 60
+        processing_status[session_id]['message'] = f'Building chains from {len(connections)} connections...'
+        
+        # Build image chains
+        chains = reconstructor.build_image_chains(images, connections)
+        
+        processing_status[session_id]['progress'] = 80
+        processing_status[session_id]['message'] = f'Reconstructing {len(chains)} product images...'
+        
+        # Process chains and create final images
+        processing_results = reconstructor.process_chains(images, chains)
+        
+        # Save analysis results
+        analysis_results = {
+            'total_images': len(images),
+            'total_connections': len(connections),
+            'total_chains': len(chains),
+            'images': [{'index': img['index'], 'name': img['name']} for img in images],
+            'connections': [
+                {
+                    'from': conn['from_name'],
+                    'to': conn['to_name'],
+                    'similarity': conn['similarity']
+                } for conn in connections
+            ],
+            'chains': [
+                {
+                    'chain_id': i,
+                    'length': len(chain),
+                    'images': [c['image_name'] for c in chain],
+                    'avg_similarity': sum([c['similarity_to_next'] for c in chain[:-1]]) / max(1, len(chain)-1) if len(chain) > 1 else 0
+                } for i, chain in enumerate(chains)
+            ],
+            'processing_results': processing_results
+        }
+        
+        # Save analysis to JSON
+        analysis_path = result_dir / "puzzle_analysis.json"
+        with open(analysis_path, 'w') as f:
+            json.dump(analysis_results, f, indent=2)
+        
+        # Count successful products
+        successful_products = sum(1 for r in processing_results if r['success'])
+        
+        # Create product paths list for web interface
+        product_paths = []
+        for result in processing_results:
+            if result['success']:
+                product_paths.append({
+                    'product_id': result['chain_id'],
+                    'path': result['output_path'],
+                    'filename': result['output_file'],
+                    'image_count': len(result['source_images']),
+                    'images': result['source_images'],
+                    'dimensions': result['dimensions']
+                })
+        
+        # Update final status
+        processing_status[session_id] = {
+            'status': 'completed',
+            'progress': 100,
+            'message': f'Puzzle reconstruction complete! Created {successful_products} products from {len(images)} images.',
+            'results': {
+                'groups': successful_products,
+                'products': product_paths,
+                'analysis_path': str(analysis_path),
+                'info_path': str(analysis_path),
+                'total_images': len(images),
+                'total_chains': len(chains),
+                'total_connections': len(connections),
+                'debug_analysis_url': f'/debug/puzzle/{session_id}'
+            }
+        }
+        
+    except Exception as e:
+        processing_status[session_id] = {
+            'status': 'error',
+            'progress': 0,
+            'message': f'Puzzle reconstruction error: {str(e)}',
+            'results': None
+        }
 
 
 def process_images_async(session_id, upload_dir, result_dir):
@@ -275,6 +389,85 @@ def upload_files():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/upload_puzzle', methods=['POST'])
+def upload_puzzle_files():
+    """Upload files for puzzle reconstruction"""
+    try:
+        if 'files[]' not in request.files:
+            return jsonify({'error': 'No files provided'}), 400
+        
+        files = request.files.getlist('files[]')
+        if not files or all(f.filename == '' for f in files):
+            return jsonify({'error': 'No files selected'}), 400
+        
+        # Create session ID and directories
+        session_id = str(uuid.uuid4())
+        session['session_id'] = session_id
+        
+        upload_dir = UPLOAD_FOLDER / session_id
+        result_dir = RESULTS_FOLDER / session_id
+        upload_dir.mkdir(exist_ok=True)
+        result_dir.mkdir(exist_ok=True)
+        
+        # Save uploaded files
+        saved_files = []
+        for i, file in enumerate(files):
+            if file and file.filename and allowed_file(file.filename):
+                print(f"Processing puzzle file: {file.filename}, content-type: {file.content_type}")
+                
+                filename = secure_filename(file.filename)
+                if not filename:  # If secure_filename returns empty, create a name
+                    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+                    filename = f"image_{i+1}.{ext}"
+                
+                # Ensure unique filename
+                counter = 1
+                original_name = filename
+                while (upload_dir / filename).exists():
+                    if '.' in original_name:
+                        name, ext = original_name.rsplit('.', 1)
+                        filename = f"{name}_{counter}.{ext}"
+                    else:
+                        filename = f"{original_name}_{counter}"
+                    counter += 1
+                
+                filepath = upload_dir / filename
+                try:
+                    file.save(str(filepath))
+                    saved_files.append(filename)
+                    print(f"Successfully saved puzzle file: {filename}")
+                    
+                    # Also save to debug analysis folder for later inspection
+                    debug_original_path = DEBUG_ANALYSIS_FOLDER / 'originals' / f"{session_id}_{filename}"
+                    shutil.copy2(str(filepath), str(debug_original_path))
+                    
+                except Exception as e:
+                    print(f"Error saving puzzle file {filename}: {e}")
+            else:
+                print(f"Skipped puzzle file: {file.filename if file else 'None'} - not allowed or empty")
+        
+        if not saved_files:
+            return jsonify({'error': 'No valid image files uploaded'}), 400
+        
+        # Start puzzle processing in background
+        thread = threading.Thread(
+            target=process_puzzle_async,
+            args=(session_id, upload_dir, result_dir)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'files_uploaded': len(saved_files),
+            'message': f'Uploaded {len(saved_files)} files. Puzzle reconstruction started...'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/status/<session_id>')
 def get_status(session_id):
     """Get processing status for a session"""
@@ -369,6 +562,55 @@ def get_debug_analysis(session_id):
             'original_images': original_images,
             'result_images': result_images,
             'debug_images': debug_images
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/debug/puzzle/<session_id>')
+def get_puzzle_debug_analysis(session_id):
+    """Get puzzle reconstruction debug analysis for a session"""
+    try:
+        result_dir = RESULTS_FOLDER / session_id
+        upload_dir = UPLOAD_FOLDER / session_id
+        
+        if not result_dir.exists():
+            return jsonify({'error': 'Session not found'}), 404
+        
+        # Get puzzle analysis info
+        analysis_path = result_dir / "puzzle_analysis.json"
+        if analysis_path.exists():
+            with open(analysis_path, 'r') as f:
+                analysis_info = json.load(f)
+        else:
+            analysis_info = {}
+        
+        # Get list of original images
+        original_images = []
+        if upload_dir.exists():
+            for img_file in upload_dir.glob('*'):
+                if img_file.suffix.lower() in ['.jpg', '.jpeg', '.png', '.webp', '.avif']:
+                    original_images.append({
+                        'filename': img_file.name,
+                        'url': f'/debug/originals/{session_id}/{img_file.name}'
+                    })
+        
+        # Get list of result images
+        result_images = []
+        if result_dir.exists():
+            for img_file in result_dir.glob('product_*.jpg'):
+                result_images.append({
+                    'filename': img_file.name,
+                    'url': f'/results/{session_id}/{img_file.name}'
+                })
+        
+        return jsonify({
+            'session_id': session_id,
+            'analysis_type': 'puzzle_reconstruction',
+            'analysis_info': analysis_info,
+            'original_images': original_images,
+            'result_images': result_images
         })
         
     except Exception as e:

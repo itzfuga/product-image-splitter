@@ -44,6 +44,42 @@
             font-size: 18px;
         }
         
+        .mode-selector {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .mode-buttons {
+            display: inline-flex;
+            background: #333;
+            border-radius: 25px;
+            padding: 5px;
+            gap: 5px;
+        }
+        
+        .mode-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 20px;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        
+        .mode-btn.active {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            color: white;
+        }
+        
+        .mode-description {
+            margin-top: 15px;
+            color: #bbb;
+            font-size: 14px;
+            min-height: 40px;
+        }
+        
         .upload-section {
             background: #2a2a2a;
             border-radius: 20px;
@@ -354,8 +390,18 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>✂️ Product Image Separator Splitter v2</h1>
-            <p>Enhanced with 4:5 ratio, auto-crop, and debugging</p>
+            <h1>🎯 Taobao Product Image Tools</h1>
+            <p>Choose your processing mode below</p>
+        </div>
+        
+        <div class="mode-selector">
+            <div class="mode-buttons">
+                <button class="mode-btn active" data-mode="separator">Separator Splitting</button>
+                <button class="mode-btn" data-mode="puzzle">Puzzle Reconstruction</button>
+            </div>
+            <div class="mode-description" id="modeDescription">
+                Split images using separator detection (STAFF EXCEED text or visual lines)
+            </div>
         </div>
         
         <div class="upload-section">
@@ -417,6 +463,66 @@
         const resultsStats = document.getElementById('resultsStats');
         const resultsGrid = document.getElementById('resultsGrid');
         const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const modeDescription = document.getElementById('modeDescription');
+        const uploadText = document.getElementById('uploadText');
+        const uploadHint = document.getElementById('uploadHint');
+        
+        // Current processing mode
+        let currentMode = 'separator';
+        
+        // Mode descriptions
+        const modeDescriptions = {
+            separator: 'Split images using separator detection (STAFF EXCEED text or visual lines)',
+            puzzle: 'Reconstruct fragmented Taobao product images by matching edges and combining pieces'
+        };
+        
+        // Upload area text for different modes
+        const uploadTexts = {
+            separator: 'Drop images with separators here',
+            puzzle: 'Drop fragmented product images here'
+        };
+        
+        const uploadHints = {
+            separator: 'Detects "STAFF/START EXCEED END" text or visual separator lines • JPG, PNG, WEBP, AVIF',
+            puzzle: 'Automatically matches and combines image fragments • JPG, PNG, WEBP, AVIF'
+        };
+        
+        // Mode switching functionality
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                switchMode(mode);
+            });
+        });
+        
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update active button
+            modeButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            // Update description and upload area text
+            modeDescription.textContent = modeDescriptions[mode];
+            uploadText.textContent = uploadTexts[mode];
+            uploadHint.textContent = uploadHints[mode];
+            
+            // Reset any current upload state
+            resetUploadState();
+        }
+        
+        function resetUploadState() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+            currentSessionId = null;
+            progressSection.style.display = 'none';
+            resultsSection.style.display = 'none';
+            logArea.textContent = '';
+        }
         
         // Event listeners
         uploadBtn.addEventListener('click', () => fileInput.click());
@@ -764,8 +870,9 @@
                 progressFill.textContent = '5%';
                 addLog('Starting upload...');
                 
-                // Upload files
-                const response = await fetch('/upload', {
+                // Upload files using the correct endpoint based on mode
+                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : '/upload';
+                const response = await fetch(uploadEndpoint, {
                     method: 'POST',
                     body: formData
                 });

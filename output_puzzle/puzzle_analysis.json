@@ -1,0 +1,741 @@
+{
+  "total_images": 35,
+  "total_connections": 14,
+  "total_chains": 28,
+  "images": [
+    {
+      "index": 0,
+      "name": "1.jpg"
+    },
+    {
+      "index": 1,
+      "name": "2.jpg"
+    },
+    {
+      "index": 2,
+      "name": "3.jpg"
+    },
+    {
+      "index": 3,
+      "name": "4.jpg"
+    },
+    {
+      "index": 4,
+      "name": "5.jpg"
+    },
+    {
+      "index": 5,
+      "name": "6.jpg"
+    },
+    {
+      "index": 6,
+      "name": "7.jpg"
+    },
+    {
+      "index": 7,
+      "name": "8.jpg"
+    },
+    {
+      "index": 8,
+      "name": "9.jpg"
+    },
+    {
+      "index": 9,
+      "name": "product_1 (1).png"
+    },
+    {
+      "index": 10,
+      "name": "product_1 (2).png"
+    },
+    {
+      "index": 11,
+      "name": "product_2 (3).png"
+    },
+    {
+      "index": 12,
+      "name": "product_2 (4).png"
+    },
+    {
+      "index": 13,
+      "name": "product_3 (3).png"
+    },
+    {
+      "index": 14,
+      "name": "product_4 (2).png"
+    },
+    {
+      "index": 15,
+      "name": "product_5 (2).png"
+    },
+    {
+      "index": 16,
+      "name": "product_6 (3).png"
+    },
+    {
+      "index": 17,
+      "name": "product_7 (2).png"
+    },
+    {
+      "index": 18,
+      "name": "product_8 (2).png"
+    },
+    {
+      "index": 19,
+      "name": "product_9 (2).png"
+    },
+    {
+      "index": 20,
+      "name": "product_10 (2).png"
+    },
+    {
+      "index": 21,
+      "name": "product_11 (2).png"
+    },
+    {
+      "index": 22,
+      "name": "product_12 (1).png"
+    },
+    {
+      "index": 23,
+      "name": "product_13 (1).png"
+    },
+    {
+      "index": 24,
+      "name": "product_14.png"
+    },
+    {
+      "index": 25,
+      "name": "product_15.png"
+    },
+    {
+      "index": 26,
+      "name": "product_16.png"
+    },
+    {
+      "index": 27,
+      "name": "product_17.png"
+    },
+    {
+      "index": 28,
+      "name": "product_18.png"
+    },
+    {
+      "index": 29,
+      "name": "product_19.png"
+    },
+    {
+      "index": 30,
+      "name": "product_20.png"
+    },
+    {
+      "index": 31,
+      "name": "product_21.png"
+    },
+    {
+      "index": 32,
+      "name": "product_22.png"
+    },
+    {
+      "index": 33,
+      "name": "product_23.png"
+    },
+    {
+      "index": 34,
+      "name": "product_24.png"
+    }
+  ],
+  "connections": [
+    {
+      "from": "9.jpg",
+      "to": "product_10 (2).png",
+      "similarity": 0.9146802813353916
+    },
+    {
+      "from": "6.jpg",
+      "to": "7.jpg",
+      "similarity": 0.9014412128638766
+    },
+    {
+      "from": "4.jpg",
+      "to": "5.jpg",
+      "similarity": 0.8952672929264762
+    },
+    {
+      "from": "8.jpg",
+      "to": "9.jpg",
+      "similarity": 0.8736135147917262
+    },
+    {
+      "from": "7.jpg",
+      "to": "8.jpg",
+      "similarity": 0.8477489276856709
+    },
+    {
+      "from": "7.jpg",
+      "to": "product_8 (2).png",
+      "similarity": 0.8477489276856709
+    },
+    {
+      "from": "4.jpg",
+      "to": "8.jpg",
+      "similarity": 0.8053922540095061
+    },
+    {
+      "from": "4.jpg",
+      "to": "product_8 (2).png",
+      "similarity": 0.8053922540095061
+    },
+    {
+      "from": "product_3 (3).png",
+      "to": "product_8 (2).png",
+      "similarity": 0.8053922540095061
+    },
+    {
+      "from": "2.jpg",
+      "to": "product_18.png",
+      "similarity": 0.7760009205376096
+    },
+    {
+      "from": "2.jpg",
+      "to": "8.jpg",
+      "similarity": 0.771390505462839
+    },
+    {
+      "from": "2.jpg",
+      "to": "product_8 (2).png",
+      "similarity": 0.771390505462839
+    },
+    {
+      "from": "2.jpg",
+      "to": "9.jpg",
+      "similarity": 0.7609298747620098
+    },
+    {
+      "from": "7.jpg",
+      "to": "9.jpg",
+      "similarity": 0.755909061732667
+    }
+  ],
+  "chains": [
+    {
+      "chain_id": 0,
+      "length": 1,
+      "images": [
+        "image_1"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 1,
+      "length": 2,
+      "images": [
+        "image_2",
+        "image_29"
+      ],
+      "avg_similarity": 0.7760009205376096
+    },
+    {
+      "chain_id": 2,
+      "length": 1,
+      "images": [
+        "image_3"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 3,
+      "length": 2,
+      "images": [
+        "image_4",
+        "image_5"
+      ],
+      "avg_similarity": 0.8952672929264762
+    },
+    {
+      "chain_id": 4,
+      "length": 5,
+      "images": [
+        "image_6",
+        "image_7",
+        "image_8",
+        "image_9",
+        "image_21"
+      ],
+      "avg_similarity": 0.8843709841691664
+    },
+    {
+      "chain_id": 5,
+      "length": 1,
+      "images": [
+        "image_10"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 6,
+      "length": 1,
+      "images": [
+        "image_11"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 7,
+      "length": 1,
+      "images": [
+        "image_12"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 8,
+      "length": 1,
+      "images": [
+        "image_13"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 9,
+      "length": 2,
+      "images": [
+        "image_14",
+        "image_19"
+      ],
+      "avg_similarity": 0.8053922540095061
+    },
+    {
+      "chain_id": 10,
+      "length": 1,
+      "images": [
+        "image_15"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 11,
+      "length": 1,
+      "images": [
+        "image_16"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 12,
+      "length": 1,
+      "images": [
+        "image_17"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 13,
+      "length": 1,
+      "images": [
+        "image_18"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 14,
+      "length": 1,
+      "images": [
+        "image_20"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 15,
+      "length": 1,
+      "images": [
+        "image_22"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 16,
+      "length": 1,
+      "images": [
+        "image_23"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 17,
+      "length": 1,
+      "images": [
+        "image_24"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 18,
+      "length": 1,
+      "images": [
+        "image_25"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 19,
+      "length": 1,
+      "images": [
+        "image_26"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 20,
+      "length": 1,
+      "images": [
+        "image_27"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 21,
+      "length": 1,
+      "images": [
+        "image_28"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 22,
+      "length": 1,
+      "images": [
+        "image_30"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 23,
+      "length": 1,
+      "images": [
+        "image_31"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 24,
+      "length": 1,
+      "images": [
+        "image_32"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 25,
+      "length": 1,
+      "images": [
+        "image_33"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 26,
+      "length": 1,
+      "images": [
+        "image_34"
+      ],
+      "avg_similarity": 0
+    },
+    {
+      "chain_id": 27,
+      "length": 1,
+      "images": [
+        "image_35"
+      ],
+      "avg_similarity": 0
+    }
+  ],
+  "processing_results": [
+    {
+      "chain_id": 0,
+      "output_file": "product_1.jpg",
+      "output_path": "output_puzzle/product_1.jpg",
+      "source_images": [
+        "image_1"
+      ],
+      "dimensions": "1548x1936",
+      "success": true
+    },
+    {
+      "chain_id": 1,
+      "output_file": "product_2.jpg",
+      "output_path": "output_puzzle/product_2.jpg",
+      "source_images": [
+        "image_2",
+        "image_29"
+      ],
+      "dimensions": "1392x1741",
+      "success": true
+    },
+    {
+      "chain_id": 2,
+      "output_file": "product_3.jpg",
+      "output_path": "output_puzzle/product_3.jpg",
+      "source_images": [
+        "image_3"
+      ],
+      "dimensions": "1857x2322",
+      "success": true
+    },
+    {
+      "chain_id": 3,
+      "output_file": "product_4.jpg",
+      "output_path": "output_puzzle/product_4.jpg",
+      "source_images": [
+        "image_4",
+        "image_5"
+      ],
+      "dimensions": "2294x2868",
+      "success": true
+    },
+    {
+      "chain_id": 4,
+      "output_file": "product_5.jpg",
+      "output_path": "output_puzzle/product_5.jpg",
+      "source_images": [
+        "image_6",
+        "image_7",
+        "image_8",
+        "image_9",
+        "image_21"
+      ],
+      "dimensions": "5133x6417",
+      "success": true
+    },
+    {
+      "chain_id": 5,
+      "output_file": "product_6.jpg",
+      "output_path": "output_puzzle/product_6.jpg",
+      "source_images": [
+        "image_10"
+      ],
+      "dimensions": "1548x1936",
+      "success": true
+    },
+    {
+      "chain_id": 6,
+      "output_file": "product_7.jpg",
+      "output_path": "output_puzzle/product_7.jpg",
+      "source_images": [
+        "image_11"
+      ],
+      "dimensions": "1548x1936",
+      "success": true
+    },
+    {
+      "chain_id": 7,
+      "output_file": "product_8.jpg",
+      "output_path": "output_puzzle/product_8.jpg",
+      "source_images": [
+        "image_12"
+      ],
+      "dimensions": "1536x1920",
+      "success": true
+    },
+    {
+      "chain_id": 8,
+      "output_file": "product_9.jpg",
+      "output_path": "output_puzzle/product_9.jpg",
+      "source_images": [
+        "image_13"
+      ],
+      "dimensions": "1536x1920",
+      "success": true
+    },
+    {
+      "chain_id": 9,
+      "output_file": "product_10.jpg",
+      "output_path": "output_puzzle/product_10.jpg",
+      "source_images": [
+        "image_14",
+        "image_19"
+      ],
+      "dimensions": "1389x1737",
+      "success": true
+    },
+    {
+      "chain_id": 10,
+      "output_file": "product_11.jpg",
+      "output_path": "output_puzzle/product_11.jpg",
+      "source_images": [
+        "image_15"
+      ],
+      "dimensions": "1560x1951",
+      "success": true
+    },
+    {
+      "chain_id": 11,
+      "output_file": "product_12.jpg",
+      "output_path": "output_puzzle/product_12.jpg",
+      "source_images": [
+        "image_16"
+      ],
+      "dimensions": "499x623",
+      "success": true
+    },
+    {
+      "chain_id": 12,
+      "output_file": "product_13.jpg",
+      "output_path": "output_puzzle/product_13.jpg",
+      "source_images": [
+        "image_17"
+      ],
+      "dimensions": "988x1235",
+      "success": true
+    },
+    {
+      "chain_id": 13,
+      "output_file": "product_14.jpg",
+      "output_path": "output_puzzle/product_14.jpg",
+      "source_images": [
+        "image_18"
+      ],
+      "dimensions": "1138x1423",
+      "success": true
+    },
+    {
+      "chain_id": 14,
+      "output_file": "product_15.jpg",
+      "output_path": "output_puzzle/product_15.jpg",
+      "source_images": [
+        "image_20"
+      ],
+      "dimensions": "1665x2082",
+      "success": true
+    },
+    {
+      "chain_id": 15,
+      "output_file": "product_16.jpg",
+      "output_path": "output_puzzle/product_16.jpg",
+      "source_images": [
+        "image_22"
+      ],
+      "dimensions": "1797x2247",
+      "success": true
+    },
+    {
+      "chain_id": 16,
+      "output_file": "product_17.jpg",
+      "output_path": "output_puzzle/product_17.jpg",
+      "source_images": [
+        "image_23"
+      ],
+      "dimensions": "1798x2248",
+      "success": true
+    },
+    {
+      "chain_id": 17,
+      "output_file": "product_18.jpg",
+      "output_path": "output_puzzle/product_18.jpg",
+      "source_images": [
+        "image_24"
+      ],
+      "dimensions": "1798x2248",
+      "success": true
+    },
+    {
+      "chain_id": 18,
+      "output_file": "product_19.jpg",
+      "output_path": "output_puzzle/product_19.jpg",
+      "source_images": [
+        "image_25"
+      ],
+      "dimensions": "1797x2247",
+      "success": true
+    },
+    {
+      "chain_id": 19,
+      "output_file": "product_20.jpg",
+      "output_path": "output_puzzle/product_20.jpg",
+      "source_images": [
+        "image_26"
+      ],
+      "dimensions": "1500x1875",
+      "success": true
+    },
+    {
+      "chain_id": 20,
+      "output_file": "product_21.jpg",
+      "output_path": "output_puzzle/product_21.jpg",
+      "source_images": [
+        "image_27"
+      ],
+      "dimensions": "1623x2029",
+      "success": true
+    },
+    {
+      "chain_id": 21,
+      "output_file": "product_22.jpg",
+      "output_path": "output_puzzle/product_22.jpg",
+      "source_images": [
+        "image_28"
+      ],
+      "dimensions": "949x1186",
+      "success": true
+    },
+    {
+      "chain_id": 22,
+      "output_file": "product_23.jpg",
+      "output_path": "output_puzzle/product_23.jpg",
+      "source_images": [
+        "image_30"
+      ],
+      "dimensions": "1500x1875",
+      "success": true
+    },
+    {
+      "chain_id": 23,
+      "output_file": "product_24.jpg",
+      "output_path": "output_puzzle/product_24.jpg",
+      "source_images": [
+        "image_31"
+      ],
+      "dimensions": "1500x1875",
+      "success": true
+    },
+    {
+      "chain_id": 24,
+      "output_file": "product_25.jpg",
+      "output_path": "output_puzzle/product_25.jpg",
+      "source_images": [
+        "image_32"
+      ],
+      "dimensions": "1602x2003",
+      "success": true
+    },
+    {
+      "chain_id": 25,
+      "output_file": "product_26.jpg",
+      "output_path": "output_puzzle/product_26.jpg",
+      "source_images": [
+        "image_33"
+      ],
+      "dimensions": "1500x1875",
+      "success": true
+    },
+    {
+      "chain_id": 26,
+      "output_file": "product_27.jpg",
+      "output_path": "output_puzzle/product_27.jpg",
+      "source_images": [
+        "image_34"
+      ],
+      "dimensions": "1798x2248",
+      "success": true
+    },
+    {
+      "chain_id": 27,
+      "output_file": "product_28.jpg",
+      "output_path": "output_puzzle/product_28.jpg",
+      "source_images": [
+        "image_35"
+      ],
+      "dimensions": "1500x1875",
+      "success": true
+    }
+  ]
+}
