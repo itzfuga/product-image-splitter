@@ -313,6 +313,7 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_files():
+    print("✂️ SEPARATOR SPLITTING ENDPOINT CALLED")
     try:
         if 'files[]' not in request.files:
             return jsonify({'error': 'No files provided'}), 400
@@ -392,6 +393,7 @@ def upload_files():
 @app.route('/upload_puzzle', methods=['POST'])
 def upload_puzzle_files():
     """Upload files for puzzle reconstruction"""
+    print("🧩 PUZZLE RECONSTRUCTION ENDPOINT CALLED")
     try:
         if 'files[]' not in request.files:
             return jsonify({'error': 'No files provided'}), 400
