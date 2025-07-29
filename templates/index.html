@@ -176,6 +176,53 @@
             flex-wrap: wrap;
         }
         
+        .debug-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .debug-toggle label {
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .debug-toggle input {
+            margin-right: 8px;
+        }
+        
+        .product-debug {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .product-debug.active {
+            display: block;
+        }
+        
+        .debug-image {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .debug-info {
+            font-size: 12px;
+            font-family: monospace;
+            color: #888;
+            line-height: 1.4;
+        }
+        
+        .debug-info .highlight {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+        
         .stat-item {
             background: #2a2a2a;
             padding: 20px;
@@ -307,8 +354,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>✂️ Product Image Separator Splitter</h1>
-            <p>Upload images with separator lines to split products automatically</p>
+            <h1>✂️ Product Image Separator Splitter v2</h1>
+            <p>Enhanced with 4:5 ratio, auto-crop, and debugging</p>
         </div>
         
         <div class="upload-section">
@@ -331,8 +378,14 @@
         
         <div class="results-section" id="resultsSection">
             <div class="results-header">
-                <h2>✅ Separator Splitting Complete!</h2>
+                <h2>✅ Processing Complete!</h2>
                 <div class="success-message" id="successMessage"></div>
+            </div>
+            
+            <div class="debug-toggle">
+                <label>
+                    <input type="checkbox" id="showDebugImages"> Show debug analysis
+                </label>
             </div>
             
             <div class="results-stats" id="resultsStats">
@@ -804,19 +857,64 @@
             results.products.forEach(product => {
                 const item = document.createElement('div');
                 item.className = 'result-item';
+                
+                // Check if debug image exists
+                const debugImageName = `debug_product_${product.product_id}.png`;
+                const hasDebugImage = product.processing_info !== undefined;
+                
+                // Format processing info for display
+                let processingInfoHtml = '';
+                if (product.processing_info) {
+                    processingInfoHtml = Object.entries(product.processing_info).map(([key, value]) => {
+                        if (key === 'content_bounds' && Array.isArray(value)) {
+                            return `<div>Content bounds: (${value[0]}, ${value[1]}) to (${value[2]}, ${value[3]})</div>`;
+                        } else if (key.includes('size') && Array.isArray(value)) {
+                            return `<div>${key.replace('_', ' ')}: ${value[0]}x${value[1]}px</div>`;
+                        } else {
+                            return `<div>${key.replace('_', ' ')}: ${JSON.stringify(value)}</div>`;
+                        }
+                    }).join('');
+                }
+                
                 item.innerHTML = `
                     <img src="/results/${currentSessionId}/${product.filename}" alt="Product ${product.product_id}">
                     <h3>Product ${product.product_id}</h3>
                     <div class="result-info">
-                        Segments: ${product.images.join(' + ')}<br>
-                        Combined from separator detection
+                        <strong>Segments:</strong> ${product.images.join(' + ')}<br>
+                        <strong>Dimensions:</strong> ${product.dimensions ? product.dimensions.width + 'x' + product.dimensions.height : 'N/A'}<br>
+                        <strong>Format:</strong> 4:5 Aspect Ratio${hasDebugImage ? '<br><span style="color: #4ecdc4;">✓ Auto-cropped & optimized</span>' : ''}
                     </div>
                     <button class="download-btn" onclick="downloadProduct('${product.filename}')">
                         💾 Download
                     </button>
+                    ${hasDebugImage ? `
+                    <div class="product-debug" id="debug-${product.product_id}">
+                        <h4>🔍 Debug Analysis</h4>
+                        <img src="/results/${currentSessionId}/${debugImageName}" alt="Debug ${product.product_id}" class="debug-image" onerror="this.style.display='none'">
+                        <div class="debug-info">
+                            <div><span class="highlight">Processing Info:</span></div>
+                            ${processingInfoHtml || 'No processing info available'}
+                        </div>
+                    </div>
+                    ` : ''}
                 `;
                 resultsGrid.appendChild(item);
             });
+            
+            // Setup debug toggle
+            const debugToggle = document.getElementById('showDebugImages');
+            if (debugToggle) {
+                debugToggle.addEventListener('change', function() {
+                    const debugSections = document.querySelectorAll('.product-debug');
+                    debugSections.forEach(section => {
+                        if (this.checked) {
+                            section.classList.add('active');
+                        } else {
+                            section.classList.remove('active');
+                        }
+                    });
+                });
+            }
             
             // Setup download all button
             downloadAllBtn.onclick = () => downloadAll();

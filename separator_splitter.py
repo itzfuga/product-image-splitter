@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import json
 import re
+from typing import Dict, List, Tuple, Optional
 
 
 class SeparatorSplitter:
@@ -21,6 +22,12 @@ class SeparatorSplitter:
         
         # Configure Tesseract (adjust path if needed)
         # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        
+        # Processing settings
+        self.force_4_5_ratio = True
+        self.auto_crop = True
+        self.background_color = (255, 255, 255)  # White background
+        self.content_padding = 20
         
     def load_images(self, image_dir):
         """Load all images from directory"""
@@ -379,6 +386,134 @@ class SeparatorSplitter:
         
         return all_segments
     
+    def detect_content_bounds(self, image: np.ndarray) -> Tuple[int, int, int, int]:
+        """Detect the bounds of actual content (model/product) in the image"""
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+        
+        height, width = gray.shape
+        
+        # Find content bounds by looking for non-background pixels
+        min_x, min_y = width, height
+        max_x, max_y = 0, 0
+        
+        # More sophisticated content detection
+        for y in range(height):
+            for x in range(width):
+                pixel = gray[y, x]
+                
+                # Check if pixel is likely content (not white background)
+                # Consider both brightness and local variance
+                is_content = False
+                
+                # Direct brightness check
+                if pixel < 240:  # Not too bright
+                    is_content = True
+                
+                # Check local variance for subtle content
+                if not is_content and x > 5 and x < width-5 and y > 5 and y < height-5:
+                    local_region = gray[y-5:y+6, x-5:x+6]
+                    local_variance = np.var(local_region)
+                    if local_variance > 25:  # Some variation indicates content
+                        is_content = True
+                
+                if is_content:
+                    min_x = min(min_x, x)
+                    min_y = min(min_y, y)
+                    max_x = max(max_x, x)
+                    max_y = max(max_y, y)
+        
+        # If no content found, use full image
+        if min_x == width:
+            return 0, 0, width, height
+        
+        return min_x, min_y, max_x, max_y
+    
+    def auto_crop_image(self, image: np.ndarray) -> np.ndarray:
+        """Remove white space around the actual content"""
+        try:
+            min_x, min_y, max_x, max_y = self.detect_content_bounds(image)
+            
+            # Add some padding around content
+            padding = min(20, min_x, min_y, image.shape[1] - max_x, image.shape[0] - max_y)
+            
+            min_x = max(0, min_x - padding)
+            min_y = max(0, min_y - padding)
+            max_x = min(image.shape[1], max_x + padding)
+            max_y = min(image.shape[0], max_y + padding)
+            
+            # Crop the image
+            cropped = image[min_y:max_y, min_x:max_x]
+            return cropped
+            
+        except Exception as e:
+            print(f"Auto-crop failed: {e}")
+            return image
+    
+    def enforce_4_5_ratio(self, image: np.ndarray) -> np.ndarray:
+        """Enforce 4:5 aspect ratio by adding padding or cropping"""
+        try:
+            height, width = image.shape[:2]
+            target_ratio = 4 / 5  # width / height
+            current_ratio = width / height
+            
+            if abs(current_ratio - target_ratio) < 0.01:
+                return image  # Already correct ratio
+            
+            if current_ratio > target_ratio:
+                # Image is too wide, add height (padding top/bottom)
+                target_height = int(width / target_ratio)
+                padding_total = target_height - height
+                padding_top = padding_total // 2
+                padding_bottom = padding_total - padding_top
+                
+                # Create new image with padding
+                new_image = np.full((target_height, width, image.shape[2]), self.background_color, dtype=image.dtype)
+                new_image[padding_top:padding_top + height, :] = image
+                return new_image
+            else:
+                # Image is too tall, add width (padding left/right)
+                target_width = int(height * target_ratio)
+                padding_total = target_width - width
+                padding_left = padding_total // 2
+                padding_right = padding_total - padding_left
+                
+                # Create new image with padding
+                new_image = np.full((height, target_width, image.shape[2]), self.background_color, dtype=image.dtype)
+                new_image[:, padding_left:padding_left + width] = image
+                return new_image
+                
+        except Exception as e:
+            print(f"4:5 ratio enforcement failed: {e}")
+            return image
+    
+    def process_product_image(self, image: np.ndarray, debug_info: Dict = None) -> np.ndarray:
+        """Process product image with auto-crop and 4:5 ratio enforcement"""
+        processed = image.copy()
+        
+        if debug_info:
+            debug_info['original_size'] = (image.shape[1], image.shape[0])
+        
+        # Auto-crop to remove white space
+        if self.auto_crop:
+            bounds = self.detect_content_bounds(processed)
+            if debug_info:
+                debug_info['content_bounds'] = bounds
+            processed = self.auto_crop_image(processed)
+            if debug_info:
+                debug_info['after_crop_size'] = (processed.shape[1], processed.shape[0])
+        
+        # Enforce 4:5 aspect ratio
+        if self.force_4_5_ratio:
+            processed = self.enforce_4_5_ratio(processed)
+            if debug_info:
+                debug_info['final_size'] = (processed.shape[1], processed.shape[0])
+                debug_info['aspect_ratio'] = '4:5'
+        
+        return processed
+    
     def create_products_from_segments(self, segments):
         """Create product images by combining segments from different source images"""
         products = []
@@ -413,12 +548,22 @@ class SeparatorSplitter:
         try:
             segment_img = segment['image']
             
+            # Process the image (auto-crop and 4:5 ratio)
+            debug_info = {}
+            processed_img = self.process_product_image(segment_img, debug_info)
+            
             # Save product image
             filename = f"product_{product_id}.png"
             output_path = self.result_dir / filename
-            cv2.imwrite(str(output_path), segment_img)
+            cv2.imwrite(str(output_path), processed_img)
             
-            height, width = segment_img.shape[:2]
+            # Save debug image if different from original
+            if not np.array_equal(processed_img, segment_img):
+                debug_filename = f"debug_product_{product_id}.png"
+                debug_path = self.result_dir / debug_filename
+                self.create_product_debug_image(segment_img, processed_img, debug_info, debug_path)
+            
+            height, width = processed_img.shape[:2]
             
             return {
                 'product_id': product_id,
@@ -431,7 +576,8 @@ class SeparatorSplitter:
                 'dimensions': {
                     'width': width,
                     'height': height
-                }
+                },
+                'processing_info': debug_info
             }
             
         except Exception as e:
@@ -459,10 +605,22 @@ class SeparatorSplitter:
             # Combine vertically
             combined = np.vstack([bottom_img, top_img])
             
+            # Process the combined image (auto-crop and 4:5 ratio)
+            debug_info = {}
+            processed_img = self.process_product_image(combined, debug_info)
+            
             # Save product image
             filename = f"product_{product_id}.png"
             output_path = self.result_dir / filename
-            cv2.imwrite(str(output_path), combined)
+            cv2.imwrite(str(output_path), processed_img)
+            
+            # Save debug image if different from original  
+            if not np.array_equal(processed_img, combined):
+                debug_filename = f"debug_product_{product_id}.png"
+                debug_path = self.result_dir / debug_filename
+                self.create_product_debug_image(combined, processed_img, debug_info, debug_path)
+            
+            height, width = processed_img.shape[:2]
             
             return {
                 'product_id': product_id,
@@ -477,9 +635,10 @@ class SeparatorSplitter:
                     'segment_index': top_segment['segment_index']
                 },
                 'dimensions': {
-                    'width': target_width,
-                    'height': height1 + height2
-                }
+                    'width': width,
+                    'height': height
+                },
+                'processing_info': debug_info
             }
             
         except Exception as e:
@@ -517,6 +676,89 @@ class SeparatorSplitter:
                 
         except Exception as e:
             print(f"Error creating debug visualization: {e}")
+    
+    def create_product_debug_image(self, original: np.ndarray, processed: np.ndarray, debug_info: Dict, output_path: Path):
+        """Create a debug image showing before/after processing"""
+        try:
+            # Create side-by-side comparison
+            orig_h, orig_w = original.shape[:2]
+            proc_h, proc_w = processed.shape[:2]
+            
+            # Scale images to same height for comparison
+            target_height = 600
+            
+            # Scale original
+            orig_scale = target_height / orig_h if orig_h > target_height else 1.0
+            if orig_scale != 1.0:
+                orig_w_scaled = int(orig_w * orig_scale)
+                orig_h_scaled = int(orig_h * orig_scale)
+                original_scaled = cv2.resize(original, (orig_w_scaled, orig_h_scaled))
+            else:
+                original_scaled = original
+                orig_w_scaled, orig_h_scaled = orig_w, orig_h
+            
+            # Scale processed
+            proc_scale = target_height / proc_h if proc_h > target_height else 1.0
+            if proc_scale != 1.0:
+                proc_w_scaled = int(proc_w * proc_scale)
+                proc_h_scaled = int(proc_h * proc_scale)
+                processed_scaled = cv2.resize(processed, (proc_w_scaled, proc_h_scaled))
+            else:
+                processed_scaled = processed
+                proc_w_scaled, proc_h_scaled = proc_w, proc_h
+            
+            # Create combined image
+            total_width = orig_w_scaled + proc_w_scaled + 60  # 60px for labels and gap
+            total_height = max(orig_h_scaled, proc_h_scaled) + 100  # 100px for labels
+            
+            debug_img = np.full((total_height, total_width, 3), (240, 240, 240), dtype=np.uint8)
+            
+            # Place original image
+            y_offset = 80
+            debug_img[y_offset:y_offset+orig_h_scaled, 10:10+orig_w_scaled] = original_scaled
+            
+            # Place processed image
+            x_offset = orig_w_scaled + 50
+            debug_img[y_offset:y_offset+proc_h_scaled, x_offset:x_offset+proc_w_scaled] = processed_scaled
+            
+            # Add labels and info
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            
+            # Original label
+            cv2.putText(debug_img, "ORIGINAL", (10, 30), font, 0.8, (0, 0, 0), 2)
+            cv2.putText(debug_img, f"Size: {orig_w}x{orig_h}", (10, 55), font, 0.5, (100, 100, 100), 1)
+            
+            # Processed label  
+            cv2.putText(debug_img, "PROCESSED (4:5 RATIO)", (x_offset, 30), font, 0.8, (0, 100, 0), 2)
+            cv2.putText(debug_img, f"Size: {proc_w}x{proc_h}", (x_offset, 55), font, 0.5, (100, 100, 100), 1)
+            
+            # Add processing info
+            info_y = total_height - 40
+            if 'content_bounds' in debug_info:
+                bounds = debug_info['content_bounds']
+                cv2.putText(debug_img, f"Content bounds: ({bounds[0]}, {bounds[1]}) to ({bounds[2]}, {bounds[3]})", 
+                           (10, info_y), font, 0.4, (0, 0, 100), 1)
+            
+            # Draw content bounds on original if available
+            if 'content_bounds' in debug_info:
+                bounds = debug_info['content_bounds']
+                # Scale bounds to debug image
+                scaled_bounds = [
+                    int(bounds[0] * orig_scale) + 10,
+                    int(bounds[1] * orig_scale) + y_offset,
+                    int(bounds[2] * orig_scale) + 10,
+                    int(bounds[3] * orig_scale) + y_offset
+                ]
+                cv2.rectangle(debug_img, (scaled_bounds[0], scaled_bounds[1]), 
+                             (scaled_bounds[2], scaled_bounds[3]), (0, 255, 255), 2)
+                cv2.putText(debug_img, "Content", (scaled_bounds[0], scaled_bounds[1]-5), 
+                           font, 0.4, (0, 255, 255), 1)
+            
+            cv2.imwrite(str(output_path), debug_img)
+            print(f"Saved product debug image: {output_path.name}")
+            
+        except Exception as e:
+            print(f"Error creating product debug image: {e}")
 
 
 def main():
@@ -549,7 +791,12 @@ def main():
     
     print(f"\nCreated {len(products)} products:")
     for product in products:
-        print(f"  {product['filename']}: {product['bottom_segment']['source']} + {product['top_segment']['source']}")
+        if 'bottom_segment' in product and 'top_segment' in product:
+            print(f"  {product['filename']}: {product['bottom_segment']['source']} + {product['top_segment']['source']}")
+        elif 'single_segment' in product:
+            print(f"  {product['filename']}: {product['single_segment']['source']} (single segment)")
+        else:
+            print(f"  {product['filename']}: Unknown structure")
     
     # Save processing info
     info = {
