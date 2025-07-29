@@ -624,18 +624,40 @@ class SeparatorSplitter:
             for segment in segments[1:]:
                 seg_img = segment['image']
                 
-                # Ensure same width
-                height1, width1 = combined.shape[:2]
+                # Ensure same width and channels
+                height1, width1, channels1 = combined.shape
                 height2, width2 = seg_img.shape[:2]
+                channels2 = seg_img.shape[2] if len(seg_img.shape) == 3 else 1
+                
                 target_width = max(width1, width2)
                 
+                # Resize width if needed
                 if width1 != target_width:
                     combined = cv2.resize(combined, (target_width, height1))
+                    # Update dimensions after resize
+                    height1, width1, channels1 = combined.shape
+                
                 if width2 != target_width:
                     seg_img = cv2.resize(seg_img, (target_width, height2))
+                    # Update dimensions after resize
+                    height2, width2 = seg_img.shape[:2]
+                    channels2 = seg_img.shape[2] if len(seg_img.shape) == 3 else 1
                 
-                # Combine vertically
-                combined = np.vstack([combined, seg_img])
+                # Ensure both images have same number of channels
+                if len(combined.shape) == 3 and len(seg_img.shape) == 2:
+                    seg_img = cv2.cvtColor(seg_img, cv2.COLOR_GRAY2BGR)
+                elif len(combined.shape) == 2 and len(seg_img.shape) == 3:
+                    combined = cv2.cvtColor(combined, cv2.COLOR_GRAY2BGR)
+                
+                # Now safely combine vertically
+                try:
+                    combined = np.vstack([combined, seg_img])
+                except ValueError as e:
+                    print(f"Error stacking segments: {e}")
+                    print(f"Combined shape: {combined.shape}, Segment shape: {seg_img.shape}")
+                    # Fallback: resize segment to match combined width exactly
+                    seg_img_resized = cv2.resize(seg_img, (combined.shape[1], seg_img.shape[0]))
+                    combined = np.vstack([combined, seg_img_resized])
             
             # Process the combined image (auto-crop and 4:5 ratio)
             debug_info = {}
