@@ -522,46 +522,159 @@ class SeparatorSplitter:
             return image
     
     def create_products_from_segments(self, segments):
-        """Create product images by combining segments from different source images"""
+        """Create product images by intelligently combining segments from different source images"""
         products = []
         product_id = 1
         
-        # For Taobao-style images: combine bottom of image N with top of image N+1
+        # Group segments by source image
+        segments_by_image = {}
+        for segment in segments:
+            img_idx = segment['source_index']
+            if img_idx not in segments_by_image:
+                segments_by_image[img_idx] = []
+            segments_by_image[img_idx].append(segment)
+        
+        print(f"Total segments: {len(segments)} from {len(segments_by_image)} images")
+        
+        # Analyze segment pattern to determine if products use 2 or 3 segments
+        total_segments = len(segments)
+        num_images = len(segments_by_image)
+        
+        # Estimate segments per product
+        if total_segments <= num_images * 1.5:  # Mostly single segments per image
+            segments_per_product = 2
+        elif total_segments >= num_images * 2.5:  # Lots of segments
+            segments_per_product = 3
+        else:
+            segments_per_product = 2  # Default
+        
+        print(f"Estimated {segments_per_product} segments per product based on {total_segments} segments from {num_images} images")
+        
+        # Create products using adaptive grouping
         all_segments = sorted(segments, key=lambda x: (x['source_index'], x['segment_index']))
+        used_segments = set()
         
-        print(f"Total segments: {len(all_segments)}")
-        
-        # Create products by pairing segments - with progress tracking
-        total_combinations = len(all_segments) - 1
-        processed = 0
-        
-        for i in range(len(all_segments) - 1):
-            current_segment = all_segments[i]
-            next_segment = all_segments[i + 1]
-            
-            processed += 1
-            if processed % 5 == 0 or processed == total_combinations:
-                print(f"Processing combination {processed}/{total_combinations}")
-            
-            # Skip if both segments are from the same image
-            if current_segment['source_index'] == next_segment['source_index']:
+        for i in range(len(all_segments)):
+            if i in used_segments:
                 continue
                 
-            print(f"Pairing: {current_segment['source_image']} seg{current_segment['segment_index']} + {next_segment['source_image']} seg{next_segment['segment_index']}")
+            current_segment = all_segments[i]
+            product_segments = [current_segment]
+            used_segments.add(i)
             
-            # Create product by combining current (bottom) with next (top)
-            try:
-                product = self.combine_segments(current_segment, next_segment, product_id)
-                if product:
-                    products.append(product)
-                    product_id += 1
-                    print(f"Created product {product_id - 1}")
-            except Exception as e:
-                print(f"Error creating product {product_id}: {e}")
-                continue
+            # Look for additional segments to complete the product
+            segments_needed = segments_per_product - 1
+            
+            for j in range(i + 1, min(i + segments_needed * 3, len(all_segments))):
+                if j in used_segments:
+                    continue
+                    
+                candidate_segment = all_segments[j]
+                
+                # Don't combine segments from the same image
+                if candidate_segment['source_index'] == current_segment['source_index']:
+                    continue
+                    
+                # Don't combine if we already have a segment from this image
+                existing_sources = {seg['source_index'] for seg in product_segments}
+                if candidate_segment['source_index'] in existing_sources:
+                    continue
+                
+                product_segments.append(candidate_segment)
+                used_segments.add(j)
+                
+                if len(product_segments) >= segments_per_product:
+                    break
+            
+            # Create product if we have enough segments
+            if len(product_segments) >= 2:  # Minimum 2 segments for a product
+                try:
+                    if len(product_segments) == 2:
+                        product = self.combine_segments(product_segments[0], product_segments[1], product_id)
+                    else:
+                        product = self.combine_multiple_segments(product_segments, product_id)
+                    
+                    if product:
+                        products.append(product)
+                        segment_info = ' + '.join([f"{seg['source_image']} seg{seg['segment_index']}" for seg in product_segments])
+                        print(f"Created product {product_id}: {segment_info}")
+                        product_id += 1
+                        
+                except Exception as e:
+                    print(f"Error creating product {product_id}: {e}")
+                    continue
+            else:
+                # Return unused segments to the pool
+                for seg_idx in [idx for idx, seg in enumerate(all_segments) if seg in product_segments]:
+                    used_segments.discard(seg_idx)
         
-        print(f"Finished creating {len(products)} products")
+        print(f"Finished creating {len(products)} products using adaptive {segments_per_product}-segment grouping")
         return products
+    
+    def combine_multiple_segments(self, segments, product_id):
+        """Combine 3 or more segments into a single product image"""
+        try:
+            # Sort segments by their vertical position in original images
+            segments = sorted(segments, key=lambda x: (x['source_index'], x['start_y']))
+            
+            # Start with first segment
+            combined = segments[0]['image'].copy()
+            
+            # Add each additional segment below the previous one
+            for segment in segments[1:]:
+                seg_img = segment['image']
+                
+                # Ensure same width
+                height1, width1 = combined.shape[:2]
+                height2, width2 = seg_img.shape[:2]
+                target_width = max(width1, width2)
+                
+                if width1 != target_width:
+                    combined = cv2.resize(combined, (target_width, height1))
+                if width2 != target_width:
+                    seg_img = cv2.resize(seg_img, (target_width, height2))
+                
+                # Combine vertically
+                combined = np.vstack([combined, seg_img])
+            
+            # Process the combined image (auto-crop and 4:5 ratio)
+            debug_info = {}
+            processed_img = self.process_product_image(combined, debug_info)
+            
+            # Save product image
+            filename = f"product_{product_id}.png"
+            output_path = self.result_dir / filename
+            cv2.imwrite(str(output_path), processed_img)
+            
+            # Save debug image if different from original  
+            try:
+                if not np.array_equal(processed_img, combined):
+                    debug_filename = f"debug_product_{product_id}.png"
+                    debug_path = self.result_dir / debug_filename
+                    self.create_product_debug_image(combined, processed_img, debug_info, debug_path)
+            except Exception as e:
+                print(f"Warning: Could not create debug image: {e}")
+            
+            height, width = processed_img.shape[:2]
+            
+            return {
+                'product_id': product_id,
+                'filename': filename,
+                'path': str(output_path),
+                'segments': [{
+                    'source': seg['source_image'],
+                    'segment_index': seg['segment_index']
+                } for seg in segments],
+                'dimensions': {
+                    'width': width,
+                    'height': height
+                },
+                'processing_info': debug_info
+            }
+            
+        except Exception as e:
+            print(f"Error combining multiple segments for product {product_id}: {e}")
+            return None
     
     def create_single_segment_product(self, segment, product_id):
         """Create a product from a single segment"""

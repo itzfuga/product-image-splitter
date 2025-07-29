@@ -177,7 +177,8 @@ def process_images_async(session_id, upload_dir, result_dir):
                 'summary_path': None,  # No summary for separator splitting
                 'info_path': str(info_path),
                 'total_images': len(images),
-                'total_segments': len(segments)
+                'total_segments': len(segments),
+                'debug_analysis_url': f'/debug/analysis/{session_id}'  # Add debug URL
             }
         }
         
@@ -298,6 +299,78 @@ def get_result_file(session_id, filename):
         else:
             return jsonify({'error': 'File not found'}), 404
             
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/debug/originals/<session_id>/<filename>')
+def get_debug_original(session_id, filename):
+    """Serve original uploaded images for analysis"""
+    try:
+        upload_dir = UPLOAD_FOLDER / session_id
+        file_path = upload_dir / filename
+        
+        if file_path.exists() and file_path.is_file():
+            return send_file(str(file_path))
+        else:
+            return jsonify({'error': 'Original file not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/debug/analysis/<session_id>')
+def get_debug_analysis(session_id):
+    """Get debug analysis for a session with image URLs"""
+    try:
+        result_dir = RESULTS_FOLDER / session_id
+        upload_dir = UPLOAD_FOLDER / session_id
+        
+        if not result_dir.exists():
+            return jsonify({'error': 'Session not found'}), 404
+        
+        # Get processing info
+        info_path = result_dir / "processing_info.json"
+        if info_path.exists():
+            with open(info_path, 'r') as f:
+                processing_info = json.load(f)
+        else:
+            processing_info = {}
+        
+        # Get list of original images
+        original_images = []
+        if upload_dir.exists():
+            for img_file in upload_dir.glob('*'):
+                if img_file.suffix.lower() in ['.jpg', '.jpeg', '.png', '.webp', '.avif']:
+                    original_images.append({
+                        'filename': img_file.name,
+                        'url': f'/debug/originals/{session_id}/{img_file.name}'
+                    })
+        
+        # Get list of result images
+        result_images = []
+        debug_images = []
+        if result_dir.exists():
+            for img_file in result_dir.glob('product_*.png'):
+                result_images.append({
+                    'filename': img_file.name,
+                    'url': f'/results/{session_id}/{img_file.name}'
+                })
+            
+            for debug_file in result_dir.glob('debug_*.png'):
+                debug_images.append({
+                    'filename': debug_file.name,
+                    'url': f'/results/{session_id}/{debug_file.name}'
+                })
+        
+        return jsonify({
+            'session_id': session_id,
+            'processing_info': processing_info,
+            'original_images': original_images,
+            'result_images': result_images,
+            'debug_images': debug_images
+        })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
