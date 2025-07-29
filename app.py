@@ -138,13 +138,21 @@ def process_puzzle_async(session_id, upload_dir, result_dir):
         product_paths = []
         for result in processing_results:
             if result['success']:
+                # Parse dimensions string (e.g., "1857x2322") into width/height
+                dims_str = result.get('dimensions', '0x0')
+                try:
+                    width, height = dims_str.split('x')
+                    dimensions = {'width': int(width), 'height': int(height)}
+                except:
+                    dimensions = {'width': 0, 'height': 0}
+                
                 product_paths.append({
                     'product_id': result['chain_id'],
                     'path': result['output_path'],
                     'filename': result['output_file'],
                     'image_count': len(result['source_images']),
                     'images': result['source_images'],
-                    'dimensions': result['dimensions']
+                    'dimensions': dimensions
                 })
         
         # Update final status
