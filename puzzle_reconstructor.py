@@ -412,16 +412,14 @@ class PuzzleReconstructor:
     def stitch_images(self, images, chain):
         """Process images for Taobao reconstruction using smart stitching"""
         if len(chain) == 1:
-            # Single image - use as-is
+            # Single image - use aggressive white trimming
             img_idx = chain[0]['image_index']
             image = images[img_idx]['cv2_image']
             
-            if self.auto_crop:
-                left, top, right, bottom = self.detect_content_bounds(image)
-                cropped = image[top:bottom+1, left:right+1]
-                return self.enforce_4_5_ratio(cropped) if self.force_4_5_ratio else cropped
-            else:
-                return self.enforce_4_5_ratio(image) if self.force_4_5_ratio else image
+            # Apply aggressive white trimming to remove ALL white background
+            trimmed = self.white_separator_stitcher.trim_all_white_edges(image)
+            
+            return self.enforce_4_5_ratio(trimmed) if self.force_4_5_ratio else trimmed
         
         elif len(chain) == 2:
             # Two images: use white separator stitching
@@ -475,7 +473,7 @@ class PuzzleReconstructor:
     
     def enforce_4_5_ratio(self, image):
         """Force image to 4:5 aspect ratio with padding"""
-        return self.content_aware_stitcher.enforce_4_5_ratio(image)
+        return self.white_separator_stitcher.enforce_4_5_ratio(image)
     
     def process_chains(self, images, chains):
         """Process all chains and create final product images"""

@@ -167,29 +167,41 @@ class WhiteSeparatorStitcher:
             product = stacked[:cut_point, :]
             print(f"  Cut at white separator y={cut_point}")
             
-            # Remove any white space at bottom
-            product = self.trim_bottom_white(product)
+            # Remove ALL white space from edges
+            product = self.trim_all_white_edges(product)
             
             return product
         else:
             print("  No white separator found, using full stack")
-            # No separator found - remove white from bottom
-            return self.trim_bottom_white(stacked)
+            # No separator found - remove all white space
+            return self.trim_all_white_edges(stacked)
     
-    def trim_bottom_white(self, image):
-        """Remove white space from bottom of image"""
+    def trim_all_white_edges(self, image):
+        """Remove ALL white space from all edges of image"""
         h, w = image.shape[:2]
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Find last non-white row
-        for y in range(h - 1, -1, -1):
-            row = gray[y, :]
-            white_ratio = np.sum(row > self.white_threshold) / w
-            
-            if white_ratio < 0.9:  # Found non-white content
-                return image[:y + 20, :]  # Keep a small margin
+        # Find content boundaries
+        content_mask = gray < self.white_threshold
         
-        return image  # All white or no change needed
+        # Find rows and columns with content
+        content_rows = np.any(content_mask, axis=1)
+        content_cols = np.any(content_mask, axis=0)
+        
+        if not np.any(content_rows) or not np.any(content_cols):
+            return image  # No content found
+        
+        # Get tight crop boundaries
+        top = np.argmax(content_rows)
+        bottom = len(content_rows) - np.argmax(content_rows[::-1])
+        left = np.argmax(content_cols) 
+        right = len(content_cols) - np.argmax(content_cols[::-1])
+        
+        # Crop to content only - no margin
+        cropped = image[top:bottom, left:right]
+        
+        print(f"  Aggressive white trim: {image.shape} -> {cropped.shape}")
+        return cropped
     
     def enforce_4_5_ratio(self, image):
         """Enforce 4:5 aspect ratio with white padding"""
@@ -229,10 +241,10 @@ class WhiteSeparatorStitcher:
         """Process a pair of images with white separator detection"""
         print(f"\nProcessing pair with white separator detection...")
         
-        # Stack and split at white separator
+        # Stack and split at white separator (already includes aggressive trimming)
         result = self.stack_and_split(img1, img2)
         
-        # Enforce 4:5 ratio
+        # Enforce 4:5 ratio after aggressive trimming
         result = self.enforce_4_5_ratio(result)
         
         return result
@@ -241,13 +253,13 @@ class WhiteSeparatorStitcher:
         """Process 3 images - stack all and find separators"""
         print(f"\nProcessing triple with white separator detection...")
         
-        # First stack img1 + img2
+        # First stack img1 + img2 (includes aggressive trimming)
         intermediate = self.stack_and_split(img1, img2)
         
-        # Then add img3 and look for separator
+        # Then add img3 and look for separator (includes aggressive trimming)
         final_result = self.stack_and_split(intermediate, img3)
         
-        # Enforce 4:5 ratio
+        # Enforce 4:5 ratio after aggressive trimming
         final_result = self.enforce_4_5_ratio(final_result)
         
         return final_result
