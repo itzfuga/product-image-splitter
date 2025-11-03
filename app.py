@@ -195,9 +195,9 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Enhanced White Detector (perfect white rectangle extraction)
-        from enhanced_white_detector import EnhancedWhiteDetector
-        splitter = EnhancedWhiteDetector(result_dir, session_id)
+        # Create Robust White Detector (always finds largest central rectangle)
+        from robust_white_detector import RobustWhiteDetector
+        splitter = RobustWhiteDetector(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
