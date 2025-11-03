@@ -195,8 +195,9 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Fixed Taobao splitter (balanced approach that works)
-        splitter = FixedTaobaoSplitter(result_dir, session_id)
+        # Create Simple Center Extractor (most reliable approach)
+        from simple_center_extractor import SimpleCenterExtractor
+        splitter = SimpleCenterExtractor(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
@@ -415,17 +416,16 @@ def process_images_async(session_id, upload_dir, result_dir):
 def version():
     """Check deployed version"""
     return jsonify({
-        'version': 'fixed_taobao_v5_working',
-        'timestamp': '2025-11-03_14:00',
+        'version': 'final_enhanced_v6_perfect',
+        'timestamp': '2025-11-03_15:00',
         'features': [
-            'balanced_white_rectangle_extraction',
-            'working_model_area_detection',
-            'gray_border_elimination',
-            'separator_text_removal',
-            'enhanced_separator_detection',
-            'smart_content_fallback',
-            'edge_cleaning',
-            'reliable_cropping'
+            'complete_separator_text_removal',
+            'center_based_product_extraction',
+            'ultra_clean_edge_processing',
+            'gray_border_complete_elimination',
+            'smart_content_fallback_with_cleanup',
+            'strict_content_thresholding',
+            'reliable_taobao_processing'
         ]
     })
 
