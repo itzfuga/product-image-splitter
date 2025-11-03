@@ -195,9 +195,9 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Perfect Final Extractor (ultimate solution)
-        from perfect_final_extractor import PerfectFinalExtractor
-        splitter = PerfectFinalExtractor(result_dir, session_id)
+        # Create Final Fixed Extractor (ultimate solution)
+        from final_fixed_extractor import FinalFixedExtractor
+        splitter = FinalFixedExtractor(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
@@ -219,8 +219,8 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
         processing_status[session_id]['progress'] = 70
         processing_status[session_id]['message'] = f'Combining {len(image_parts)} image parts into products...'
         
-        # Combine parts into products (chronological)
-        products = splitter.combine_chronologically(image_parts)
+        # Combine parts into products (chronological fixed order)
+        products = splitter.combine_chronologically_fixed_order(image_parts)
         
         if not products:
             processing_status[session_id]['status'] = 'error'
