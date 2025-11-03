@@ -195,9 +195,9 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Robust White Detector (always finds largest central rectangle)
-        from robust_white_detector import RobustWhiteDetector
-        splitter = RobustWhiteDetector(result_dir, session_id)
+        # Create Perfect Final Extractor (ultimate solution)
+        from perfect_final_extractor import PerfectFinalExtractor
+        splitter = PerfectFinalExtractor(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
@@ -416,17 +416,17 @@ def process_images_async(session_id, upload_dir, result_dir):
 def version():
     """Check deployed version"""
     return jsonify({
-        'version': 'enhanced_white_v9_perfect',
-        'timestamp': '2025-11-03_18:45',
+        'version': 'perfect_final_v10_ultimate',
+        'timestamp': '2025-11-03_19:30',
         'features': [
-            'enhanced_white_rectangle_detection',
+            'perfect_white_rectangle_detection',
+            'smart_width_expansion_for_consistency',
             'chronological_image_pairing',
-            'perfect_separator_removal',
+            'complete_separator_text_elimination',
             'contour_based_boundary_detection',
-            'clean_product_extraction',
-            'full_model_preservation',
-            'pure_white_background',
-            'complete_text_elimination'
+            'full_model_preservation_head_to_boots',
+            'consistent_wide_product_framing',
+            'pure_white_background_extraction'
         ]
     })
 
