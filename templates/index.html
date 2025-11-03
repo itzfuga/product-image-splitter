@@ -399,7 +399,8 @@
         
         <div class="mode-selector">
             <div class="mode-buttons">
-                <button class="mode-btn active" data-mode="separator">Separator Splitting</button>
+                <button class="mode-btn active" data-mode="taobao">🏷️ Taobao Splitting</button>
+                <button class="mode-btn" data-mode="separator">Separator Splitting</button>
                 <button class="mode-btn" data-mode="puzzle">Sequential Grouping</button>
             </div>
             <div class="mode-description" id="modeDescription">
@@ -472,21 +473,24 @@
         const uploadHint = document.getElementById('uploadHint');
         
         // Current processing mode
-        let currentMode = 'separator';
+        let currentMode = 'taobao';
         
         // Mode descriptions
         const modeDescriptions = {
+            taobao: 'Optimized for Taobao images with "START EXCEED END" separators - combines bottom of image N with top of image N+1',
             separator: 'Split images using separator detection (STAFF EXCEED text or visual lines)',
             puzzle: 'Group consecutive Taobao product images sequentially (2-3 images per product)'
         };
         
         // Upload area text for different modes
         const uploadTexts = {
+            taobao: 'Drop your Taobao product images here (in order: 1.jpg, 2.jpg, 3.jpg...)',
             separator: 'Drop images with separators here',
             puzzle: 'Drop sequential product images here'
         };
         
         const uploadHints = {
+            taobao: 'Optimized for Taobao: detects separators and combines bottom N + top N+1 • JPG, PNG, WEBP, AVIF',
             separator: 'Detects "STAFF/START EXCEED END" text or visual separator lines • JPG, PNG, WEBP, AVIF',
             puzzle: 'Groups images in upload order (1+2, 3+4, etc.) • JPG, PNG, WEBP, AVIF'
         };
@@ -805,7 +809,8 @@
                 }
                 
                 // Upload the loaded files using the correct endpoint based on mode
-                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : '/upload';
+                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : 
+                                       currentMode === 'taobao' ? '/upload_taobao' : '/upload';
                 console.log(`URL loading - Current mode: ${currentMode}, Using endpoint: ${uploadEndpoint}`);
                 addLog(`Using ${currentMode} mode for URL loading - endpoint: ${uploadEndpoint}`);
                 const response = await fetch(uploadEndpoint, {
@@ -882,7 +887,8 @@
                 addLog('Starting upload...');
                 
                 // Upload files using the correct endpoint based on mode
-                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : '/upload';
+                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : 
+                                       currentMode === 'taobao' ? '/upload_taobao' : '/upload';
                 console.log(`Current mode: ${currentMode}, Using endpoint: ${uploadEndpoint}`);
                 addLog(`Using ${currentMode} mode - endpoint: ${uploadEndpoint}`);
                 const response = await fetch(uploadEndpoint, {

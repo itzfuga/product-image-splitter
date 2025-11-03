@@ -13,6 +13,7 @@ import json
 import threading
 import time
 from separator_splitter import SeparatorSplitter
+from taobao_splitter import TaobaoSplitter
 from puzzle_reconstructor import PuzzleReconstructor
 
 app = Flask(__name__)
@@ -181,6 +182,100 @@ def process_puzzle_async(session_id, upload_dir, result_dir):
         }
 
 
+def process_taobao_images_async(session_id, upload_dir, result_dir):
+    """Process Taobao images with improved separator detection"""
+    try:
+        processing_status[session_id] = {
+            'status': 'processing',
+            'progress': 0,
+            'message': 'Initializing Taobao image processing...',
+            'results': None
+        }
+        
+        # Create Taobao splitter
+        splitter = TaobaoSplitter(result_dir, session_id)
+        
+        # Update status
+        processing_status[session_id]['progress'] = 10
+        processing_status[session_id]['message'] = 'Loading images...'
+        
+        # Load images
+        images = splitter.load_images(upload_dir)
+        if not images:
+            processing_status[session_id]['status'] = 'error'
+            processing_status[session_id]['message'] = 'No valid images found'
+            return
+        
+        processing_status[session_id]['progress'] = 30
+        processing_status[session_id]['message'] = f'Detecting separators in {len(images)} images...'
+        
+        # Process images and split at separators
+        image_parts = splitter.process_images(images)
+        
+        processing_status[session_id]['progress'] = 70
+        processing_status[session_id]['message'] = f'Combining {len(image_parts)} image parts into products...'
+        
+        # Combine parts into products
+        products = splitter.combine_image_parts(image_parts)
+        
+        if not products:
+            processing_status[session_id]['status'] = 'error'
+            processing_status[session_id]['message'] = 'No products created'
+            return
+        
+        processing_status[session_id]['progress'] = 90
+        processing_status[session_id]['message'] = f'Generated {len(products)} product images...'
+        
+        # Create product paths list for web interface
+        product_paths = []
+        for product in products:
+            product_paths.append({
+                'product_id': product['product_id'],
+                'path': product['path'],
+                'filename': product['filename'],
+                'image_count': 2 if 'top_source' in product else 1,
+                'images': [
+                    product.get('bottom_source', product.get('source', 'Unknown')),
+                    product.get('top_source', '')
+                ] if 'top_source' in product else [product.get('source', 'Unknown')],
+                'dimensions': product.get('dimensions', '0x0')
+            })
+        
+        # Save processing info
+        processing_info = {
+            'session_id': session_id,
+            'total_images': len(images),
+            'total_products': len(products),
+            'products': products
+        }
+        
+        info_path = result_dir / "taobao_processing_info.json"
+        with open(info_path, 'w') as f:
+            json.dump(processing_info, f, indent=2)
+        
+        # Update final status
+        processing_status[session_id] = {
+            'status': 'completed',
+            'progress': 100,
+            'message': f'Taobao processing complete! Created {len(products)} products from {len(images)} images.',
+            'results': {
+                'groups': len(products),
+                'products': product_paths,
+                'info_path': str(info_path),
+                'total_images': len(images),
+                'processing_type': 'taobao'
+            }
+        }
+        
+    except Exception as e:
+        processing_status[session_id] = {
+            'status': 'error',
+            'progress': 0,
+            'message': f'Taobao processing error: {str(e)}',
+            'results': None
+        }
+
+
 def process_images_async(session_id, upload_dir, result_dir):
     """Process images in background thread"""
     try:
@@ -317,12 +412,15 @@ def process_images_async(session_id, upload_dir, result_dir):
 def version():
     """Check deployed version"""
     return jsonify({
-        'version': 'white_separator_v2_aggressive_trim',
-        'timestamp': '2025-07-29_23:00',
+        'version': 'taobao_separator_v3_fixed',
+        'timestamp': '2025-11-03_11:30',
         'features': [
-            'white_separator_detection',
-            'aggressive_white_trimming', 
-            'smart_7_8_handling',
+            'taobao_separator_detection',
+            'improved_start_exceed_end_detection',
+            'visual_separator_fallback',
+            'correct_image_sequencing',
+            'auto_cropping',
+            'dimension_mismatch_fix',
             'puzzle_reconstruction_integrated'
         ]
     })
@@ -406,6 +504,86 @@ def upload_files():
             'session_id': session_id,
             'files_uploaded': len(saved_files),
             'message': f'Uploaded {len(saved_files)} files. Processing started...'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/upload_taobao', methods=['POST'])
+def upload_taobao_files():
+    """Upload files for Taobao separator processing"""
+    print("🏷️ TAOBAO SEPARATOR PROCESSING ENDPOINT CALLED")
+    try:
+        if 'files[]' not in request.files:
+            return jsonify({'error': 'No files provided'}), 400
+        
+        files = request.files.getlist('files[]')
+        if not files or all(f.filename == '' for f in files):
+            return jsonify({'error': 'No files selected'}), 400
+        
+        # Create session ID and directories
+        session_id = str(uuid.uuid4())
+        session['session_id'] = session_id
+        
+        upload_dir = UPLOAD_FOLDER / session_id
+        result_dir = RESULTS_FOLDER / session_id
+        upload_dir.mkdir(exist_ok=True)
+        result_dir.mkdir(exist_ok=True)
+        
+        # Save uploaded files
+        saved_files = []
+        for i, file in enumerate(files):
+            if file and file.filename and allowed_file(file.filename):
+                print(f"Processing Taobao file: {file.filename}, content-type: {file.content_type}")
+                
+                filename = secure_filename(file.filename)
+                if not filename:  # If secure_filename returns empty, create a name
+                    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+                    filename = f"image_{i+1}.{ext}"
+                
+                # Ensure unique filename
+                counter = 1
+                original_name = filename
+                while (upload_dir / filename).exists():
+                    if '.' in original_name:
+                        name, ext = original_name.rsplit('.', 1)
+                        filename = f"{name}_{counter}.{ext}"
+                    else:
+                        filename = f"{original_name}_{counter}"
+                    counter += 1
+                
+                filepath = upload_dir / filename
+                try:
+                    file.save(str(filepath))
+                    saved_files.append(filename)
+                    print(f"Successfully saved Taobao file: {filename}")
+                    
+                    # Also save to debug analysis folder for later inspection
+                    debug_original_path = DEBUG_ANALYSIS_FOLDER / 'originals' / f"{session_id}_{filename}"
+                    shutil.copy2(str(filepath), str(debug_original_path))
+                    
+                except Exception as e:
+                    print(f"Error saving Taobao file {filename}: {e}")
+            else:
+                print(f"Skipped Taobao file: {file.filename if file else 'None'} - not allowed or empty")
+        
+        if not saved_files:
+            return jsonify({'error': 'No valid image files uploaded'}), 400
+        
+        # Start Taobao processing in background
+        thread = threading.Thread(
+            target=process_taobao_images_async,
+            args=(session_id, upload_dir, result_dir)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'files_uploaded': len(saved_files),
+            'message': f'Uploaded {len(saved_files)} files. Taobao processing started...'
         })
         
     except Exception as e:
