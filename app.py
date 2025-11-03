@@ -195,9 +195,9 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Minimal Crop Extractor (preserves full model body)
-        from minimal_crop_extractor import MinimalCropExtractor
-        splitter = MinimalCropExtractor(result_dir, session_id)
+        # Create Enhanced White Detector (perfect white rectangle extraction)
+        from enhanced_white_detector import EnhancedWhiteDetector
+        splitter = EnhancedWhiteDetector(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
@@ -213,14 +213,14 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
         processing_status[session_id]['progress'] = 30
         processing_status[session_id]['message'] = f'Detecting separators in {len(images)} images...'
         
-        # Process images and split at separators
-        image_parts = splitter.process_images(images)
+        # Process images and split at separators (chronological)
+        image_parts = splitter.process_images_chronologically(images)
         
         processing_status[session_id]['progress'] = 70
         processing_status[session_id]['message'] = f'Combining {len(image_parts)} image parts into products...'
         
-        # Combine parts into products
-        products = splitter.combine_image_parts(image_parts)
+        # Combine parts into products (chronological)
+        products = splitter.combine_chronologically(image_parts)
         
         if not products:
             processing_status[session_id]['status'] = 'error'
@@ -416,17 +416,17 @@ def process_images_async(session_id, upload_dir, result_dir):
 def version():
     """Check deployed version"""
     return jsonify({
-        'version': 'minimal_crop_v8_fullbody',
-        'timestamp': '2025-11-03_17:30',
+        'version': 'enhanced_white_v9_perfect',
+        'timestamp': '2025-11-03_18:45',
         'features': [
-            'minimal_crop_approach',
-            'full_body_model_preservation',
-            'separator_text_removal',
-            'edge_trimming_only',
-            'no_aggressive_cropping',
-            'content_aware_processing',
-            'natural_product_framing',
-            'complete_model_visibility'
+            'enhanced_white_rectangle_detection',
+            'chronological_image_pairing',
+            'perfect_separator_removal',
+            'contour_based_boundary_detection',
+            'clean_product_extraction',
+            'full_model_preservation',
+            'pure_white_background',
+            'complete_text_elimination'
         ]
     })
 
