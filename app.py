@@ -14,6 +14,7 @@ import threading
 import time
 from separator_splitter import SeparatorSplitter
 from taobao_splitter import TaobaoSplitter
+from enhanced_taobao_splitter import EnhancedTaobaoSplitter
 from puzzle_reconstructor import PuzzleReconstructor
 
 app = Flask(__name__)
@@ -192,8 +193,8 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Taobao splitter
-        splitter = TaobaoSplitter(result_dir, session_id)
+        # Create Enhanced Taobao splitter
+        splitter = EnhancedTaobaoSplitter(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
