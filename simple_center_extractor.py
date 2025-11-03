@@ -183,7 +183,7 @@ class SimpleCenterExtractor:
             return image
     
     def ultra_clean_edges(self, image):
-        """Ultra-aggressive edge cleaning to remove ALL gray pixels"""
+        """Balanced edge cleaning - removes gray borders but keeps full model"""
         try:
             # First remove separator text
             image = self.remove_separator_text_completely(image)
@@ -191,11 +191,11 @@ class SimpleCenterExtractor:
             height, width = image.shape[:2]
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             
-            # Find content (anything that's clearly not background)
-            # Be very strict: only keep very dark content or pure white
-            content_mask = (gray < 160) | (gray > 250)
+            # Find content with more lenient threshold to capture full model
+            # Include more content but still exclude gray backgrounds
+            content_mask = (gray < 200) | (gray > 245)  # Less aggressive than before
             
-            # Find tight bounds
+            # Find bounds
             rows_with_content = np.any(content_mask, axis=1)
             cols_with_content = np.any(content_mask, axis=0)
             
@@ -208,25 +208,25 @@ class SimpleCenterExtractor:
             min_row, max_row = row_indices[0], row_indices[-1]
             min_col, max_col = col_indices[0], col_indices[-1]
             
-            # Add minimal padding but ensure white background
-            padding = 10
+            # Add generous padding to ensure we get the full model
+            padding = 50  # Much more generous padding
             min_row = max(0, min_row - padding)
             min_col = max(0, min_col - padding)
             max_row = min(height - 1, max_row + padding)
             max_col = min(width - 1, max_col + padding)
             
-            # Extract the ultra-clean region
-            ultra_clean = image[min_row:max_row+1, min_col:max_col+1]
+            # Extract the balanced clean region
+            clean_image = image[min_row:max_row+1, min_col:max_col+1]
             
-            print(f"Ultra-cleaned: {max_col-min_col+1}x{max_row-min_row+1}")
-            return ultra_clean
+            print(f"Balanced clean: {max_col-min_col+1}x{max_row-min_row+1}")
+            return clean_image
             
         except Exception as e:
-            print(f"Ultra cleaning failed: {e}")
+            print(f"Balanced cleaning failed: {e}")
             return image
     
     def smart_content_extraction(self, image):
-        """Fallback: smart content extraction with separator removal"""
+        """Fallback: smart content extraction with separator removal - full model view"""
         try:
             # First remove separator text
             image = self.remove_separator_text_completely(image)
@@ -234,11 +234,11 @@ class SimpleCenterExtractor:
             height, width = image.shape[:2]
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             
-            # Find actual content (model)
-            content_mask = gray < 170  # Dark content (stricter)
+            # Find actual content (model) with more generous threshold
+            content_mask = gray < 210  # More lenient to capture full model
             
             # Clean up small noise
-            kernel = np.ones((5, 5), np.uint8)
+            kernel = np.ones((3, 3), np.uint8)  # Smaller kernel to preserve detail
             content_mask = cv2.morphologyEx(content_mask.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
             
             # Find bounding box of content
@@ -252,15 +252,15 @@ class SimpleCenterExtractor:
                 min_y, max_y = row_indices[0], row_indices[-1]
                 min_x, max_x = col_indices[0], col_indices[-1]
                 
-                # Add white background padding
-                padding = 25
+                # Add generous white background padding for full model view
+                padding = 80  # Much more generous padding
                 min_x = max(0, min_x - padding)
                 min_y = max(0, min_y - padding)
                 max_x = min(width, max_x + padding)
                 max_y = min(height, max_y + padding)
                 
                 extracted = image[min_y:max_y, min_x:max_x]
-                print(f"Smart extraction: {max_x-min_x}x{max_y-min_y}")
+                print(f"Smart extraction (full model): {max_x-min_x}x{max_y-min_y}")
                 return extracted
             
             return image

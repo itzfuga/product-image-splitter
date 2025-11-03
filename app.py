@@ -416,16 +416,17 @@ def process_images_async(session_id, upload_dir, result_dir):
 def version():
     """Check deployed version"""
     return jsonify({
-        'version': 'final_enhanced_v6_perfect',
-        'timestamp': '2025-11-03_15:00',
+        'version': 'balanced_final_v7_fullmodel',
+        'timestamp': '2025-11-03_16:00',
         'features': [
             'complete_separator_text_removal',
-            'center_based_product_extraction',
-            'ultra_clean_edge_processing',
-            'gray_border_complete_elimination',
-            'smart_content_fallback_with_cleanup',
-            'strict_content_thresholding',
-            'reliable_taobao_processing'
+            'full_model_view_extraction',
+            'balanced_content_thresholding',
+            'gray_border_elimination',
+            'generous_padding_for_full_view',
+            'smart_content_fallback',
+            'no_extreme_closeups',
+            'perfect_product_framing'
         ]
     })
 
