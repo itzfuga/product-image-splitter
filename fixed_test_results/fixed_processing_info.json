@@ -1,0 +1,166 @@
+{
+  "total_images": 24,
+  "total_products": 20,
+  "products": [
+    {
+      "product_id": 1,
+      "filename": "product_1.jpg",
+      "path": "fixed_test_results/product_1.jpg",
+      "bottom_source": "1.jpg",
+      "top_source": "2.jpg",
+      "dimensions": "600x2654"
+    },
+    {
+      "product_id": 2,
+      "filename": "product_2.jpg",
+      "path": "fixed_test_results/product_2.jpg",
+      "bottom_source": "2.jpg",
+      "top_source": "3.jpg",
+      "dimensions": "1590x2676"
+    },
+    {
+      "product_id": 3,
+      "filename": "product_3.jpg",
+      "path": "fixed_test_results/product_3.jpg",
+      "bottom_source": "3.jpg",
+      "top_source": "4.jpg",
+      "dimensions": "843x2684"
+    },
+    {
+      "product_id": 4,
+      "filename": "product_4.jpg",
+      "path": "fixed_test_results/product_4.jpg",
+      "bottom_source": "4.jpg",
+      "top_source": "5.jpg",
+      "dimensions": "716x2716"
+    },
+    {
+      "product_id": 5,
+      "filename": "product_5.jpg",
+      "path": "fixed_test_results/product_5.jpg",
+      "bottom_source": "5.jpg",
+      "top_source": "6.jpg",
+      "dimensions": "1505x2699"
+    },
+    {
+      "product_id": 6,
+      "filename": "product_6.jpg",
+      "path": "fixed_test_results/product_6.jpg",
+      "bottom_source": "6.jpg",
+      "top_source": "7.jpg",
+      "dimensions": "581x2639"
+    },
+    {
+      "product_id": 7,
+      "filename": "product_7.jpg",
+      "path": "fixed_test_results/product_7.jpg",
+      "bottom_source": "7.jpg",
+      "top_source": "8.jpg",
+      "dimensions": "1362x2688"
+    },
+    {
+      "product_id": 8,
+      "filename": "product_8.jpg",
+      "path": "fixed_test_results/product_8.jpg",
+      "bottom_source": "8.jpg",
+      "top_source": "9.jpg",
+      "dimensions": "750x2271"
+    },
+    {
+      "product_id": 9,
+      "filename": "product_9.jpg",
+      "path": "fixed_test_results/product_9.jpg",
+      "bottom_source": "9.jpg",
+      "top_source": "10.jpg",
+      "dimensions": "1837x390"
+    },
+    {
+      "product_id": 10,
+      "filename": "product_10.jpg",
+      "path": "fixed_test_results/product_10.jpg",
+      "bottom_source": "10.jpg",
+      "top_source": "11.jpg",
+      "dimensions": "856x2359"
+    },
+    {
+      "product_id": 11,
+      "filename": "product_11.jpg",
+      "path": "fixed_test_results/product_11.jpg",
+      "bottom_source": "11.jpg",
+      "top_source": "12.jpg",
+      "dimensions": "1639x2701"
+    },
+    {
+      "product_id": 12,
+      "filename": "product_12.jpg",
+      "path": "fixed_test_results/product_12.jpg",
+      "bottom_source": "12.jpg",
+      "top_source": "product_1 (4).jpg",
+      "dimensions": "731x2665"
+    },
+    {
+      "product_id": 13,
+      "filename": "product_13.jpg",
+      "path": "fixed_test_results/product_13.jpg",
+      "bottom_source": "product_1 (4).jpg",
+      "top_source": "product_2 (4).jpg",
+      "dimensions": "1576x2676"
+    },
+    {
+      "product_id": 14,
+      "filename": "product_14.jpg",
+      "path": "fixed_test_results/product_14.jpg",
+      "bottom_source": "product_2 (4).jpg",
+      "top_source": "product_3 (4).jpg",
+      "dimensions": "1264x2684"
+    },
+    {
+      "product_id": 15,
+      "filename": "product_15.jpg",
+      "path": "fixed_test_results/product_15.jpg",
+      "bottom_source": "product_3 (4).jpg",
+      "top_source": "product_4 (6).jpg",
+      "dimensions": "1240x1690"
+    },
+    {
+      "product_id": 16,
+      "filename": "product_16.jpg",
+      "path": "fixed_test_results/product_16.jpg",
+      "bottom_source": "product_4 (6).jpg",
+      "top_source": "product_5 (7).jpg",
+      "dimensions": "1648x2775"
+    },
+    {
+      "product_id": 17,
+      "filename": "product_17.jpg",
+      "path": "fixed_test_results/product_17.jpg",
+      "bottom_source": "product_7 (2).jpg",
+      "top_source": "product_8.jpg",
+      "dimensions": "1815x2011"
+    },
+    {
+      "product_id": 18,
+      "filename": "product_18.jpg",
+      "path": "fixed_test_results/product_18.jpg",
+      "source": "product_6 (2).jpg",
+      "type": "single_image",
+      "dimensions": "581x2649"
+    },
+    {
+      "product_id": 19,
+      "filename": "product_19.jpg",
+      "path": "fixed_test_results/product_19.jpg",
+      "source": "product_9.jpg",
+      "type": "single_image",
+      "dimensions": "843x2139"
+    },
+    {
+      "product_id": 20,
+      "filename": "product_20.jpg",
+      "path": "fixed_test_results/product_20.jpg",
+      "source": "product_11 (1).jpg",
+      "type": "single_image",
+      "dimensions": "410x1715"
+    }
+  ]
+}
