@@ -15,6 +15,7 @@ import time
 from separator_splitter import SeparatorSplitter
 from taobao_splitter import TaobaoSplitter
 from enhanced_taobao_splitter import EnhancedTaobaoSplitter
+from ultra_precise_taobao_splitter import UltraPreciseTaobaoSplitter
 from puzzle_reconstructor import PuzzleReconstructor
 
 app = Flask(__name__)
@@ -193,8 +194,8 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Enhanced Taobao splitter
-        splitter = EnhancedTaobaoSplitter(result_dir, session_id)
+        # Create Ultra-Precise Taobao splitter
+        splitter = UltraPreciseTaobaoSplitter(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
@@ -413,16 +414,17 @@ def process_images_async(session_id, upload_dir, result_dir):
 def version():
     """Check deployed version"""
     return jsonify({
-        'version': 'taobao_separator_v3_fixed',
-        'timestamp': '2025-11-03_11:30',
+        'version': 'ultra_precise_taobao_v4',
+        'timestamp': '2025-11-03_13:00',
         'features': [
-            'taobao_separator_detection',
-            'improved_start_exceed_end_detection',
-            'visual_separator_fallback',
-            'correct_image_sequencing',
-            'auto_cropping',
-            'dimension_mismatch_fix',
-            'puzzle_reconstruction_integrated'
+            'ultra_precise_white_rectangle_extraction',
+            'pure_model_area_detection',
+            'gray_border_elimination',
+            'separator_text_removal',
+            'enhanced_separator_detection',
+            'multi_threshold_analysis',
+            'content_purity_scoring',
+            'ultra_trim_edges'
         ]
     })
 
