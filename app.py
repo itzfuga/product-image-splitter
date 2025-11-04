@@ -192,13 +192,13 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
         
         # Create Sequential Stitcher
         stitcher = SequentialStitcher(result_dir, session_id)
-        
+
         # Update status
         processing_status[session_id]['progress'] = 10
         processing_status[session_id]['message'] = 'Loading images...'
-        
+
         # Load images
-        images = splitter.load_images(upload_dir)
+        images = stitcher.load_images(upload_dir)
         if not images:
             processing_status[session_id]['status'] = 'error'
             processing_status[session_id]['message'] = 'No valid images found'
@@ -284,39 +284,36 @@ def process_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create separator splitter
-        splitter = SeparatorSplitter(result_dir, session_id)
-        
+        # Create Sequential Stitcher
+        stitcher = SequentialStitcher(result_dir, session_id)
+
         # Update status
         processing_status[session_id]['progress'] = 10
         processing_status[session_id]['message'] = 'Loading images...'
-        
+
         # Load images
-        images = splitter.load_images(upload_dir)
+        images = stitcher.load_images(upload_dir)
         if not images:
             processing_status[session_id]['status'] = 'error'
             processing_status[session_id]['message'] = 'No valid images found'
             return
-        
-        processing_status[session_id]['progress'] = 20
-        processing_status[session_id]['message'] = f'Detecting separators in {len(images)} images...'
-        
-        # Process images and split at separators
-        segments = splitter.process_images(images)
-        
-        if not segments:
+
+        processing_status[session_id]['progress'] = 30
+        processing_status[session_id]['message'] = f'Detecting model pictures in {len(images)} images...'
+
+        # Process images and extract model pictures
+        model_pictures = stitcher.process_images_chronologically(images)
+
+        if not model_pictures:
             processing_status[session_id]['status'] = 'error'
-            processing_status[session_id]['message'] = 'No segments created - no separators detected'
+            processing_status[session_id]['message'] = 'No model pictures found'
             return
-        
-        processing_status[session_id]['progress'] = 60
-        processing_status[session_id]['message'] = f'Creating products from {len(segments)} segments...'
-        
-        # Create debug visualizations
-        splitter.create_debug_visualization(images, segments)
-        
-        # Create products by combining segments
-        products = splitter.create_products_from_segments(segments)
+
+        processing_status[session_id]['progress'] = 70
+        processing_status[session_id]['message'] = f'Combining {len(model_pictures)} model pictures into products...'
+
+        # Combine model pictures sequentially
+        products = stitcher.combine_sequential_model_pictures(model_pictures)
         
         if not products:
             processing_status[session_id]['status'] = 'error'
