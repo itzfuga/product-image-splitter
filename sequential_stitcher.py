@@ -193,22 +193,31 @@ class SequentialStitcher:
         """
         Combine parts: Part N + Part N+1 = Product
 
+        IMPORTANT: Only combine parts from DIFFERENT images!
+        Skip combinations where both parts are from the same image.
+
         Structure:
-        - Product 1 = Part 0 (original 1, before separator) + Part 1 (original 2, before separator)
-        - Product 2 = Part 2 (original 2, after separator) + Part 3 (original 3, before separator)
-        - And so on...
+        - Product 1 = original 1 bottom + original 2 top (DIFFERENT images)
+        - Product 2 = original 2 bottom + original 3 top (DIFFERENT images)
+        - Skip: original 1 top + original 1 bottom (SAME image - not a product)
         """
         products = []
         product_id = 1
 
         print(f"\n=== Combining {len(parts)} parts into products ===")
-        print("Logic: Part N (top half of model) + Part N+1 (bottom half of model) = Product")
+        print("Logic: Only combine parts from DIFFERENT source images")
 
-        # Combine pairs: part[i] + part[i+1]
+        # Combine pairs: part[i] + part[i+1], but ONLY if from different images
         i = 0
         while i < len(parts) - 1:
             current_part = parts[i]
             next_part = parts[i + 1]
+
+            # SKIP if both parts are from the same source image
+            if current_part['source_index'] == next_part['source_index']:
+                print(f"\nSkipping: {current_part['source_image']} ({current_part['type']}) + {next_part['source_image']} ({next_part['type']}) - same image, not a product")
+                i += 1
+                continue
 
             print(f"\nProduct {product_id}:")
             print(f"  Top: {current_part['source_image']} ({current_part['type']} part)")
