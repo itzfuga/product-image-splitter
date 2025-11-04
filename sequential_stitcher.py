@@ -192,41 +192,43 @@ class SequentialStitcher:
         return all_model_pictures
 
     def combine_sequential_model_pictures(self, model_pictures):
-        """Combine: bottom of model picture N + top of model picture N+1 = Product"""
+        """
+        Combine model pictures based on their position in source images.
+
+        Structure of Taobao images:
+        - Image 1: Top rectangle = Full product 1
+        - Image 2: Top rectangle = Bottom of product 1, Bottom rectangle = Top of product 2
+        - Image 3: Top rectangle = Bottom of product 2, Bottom rectangle = Top of product 3
+
+        So: Product N = Top rectangle of image N + Bottom rectangle of image N
+        """
         products = []
         product_id = 1
 
-        print(f"\n=== Combining {len(model_pictures)} model pictures into products ===")
+        print(f"\n=== Analyzing {len(model_pictures)} model pictures ===")
 
-        # Combine pairs: pic[i] bottom + pic[i+1] top
-        for i in range(len(model_pictures) - 1):
-            current_pic = model_pictures[i]
-            next_pic = model_pictures[i + 1]
+        # Group pictures by source image
+        pictures_by_image = {}
+        for pic in model_pictures:
+            source_idx = pic['source_index']
+            if source_idx not in pictures_by_image:
+                pictures_by_image[source_idx] = []
+            pictures_by_image[source_idx].append(pic)
 
-            print(f"\nProduct {product_id}:")
-            print(f"  Bottom: {current_pic['source_image']} (model {current_pic['rect_index']+1})")
-            print(f"  Top: {next_pic['source_image']} (model {next_pic['rect_index']+1})")
+        # Sort each group by Y position (rect_index is already sorted)
+        for idx in pictures_by_image:
+            pictures_by_image[idx].sort(key=lambda p: p['rect_index'])
 
-            img1 = current_pic['image']
-            img2 = next_pic['image']
+        print(f"\n=== Creating products from sequential rectangles ===")
 
-            # Ensure same width
-            h1, w1 = img1.shape[:2]
-            h2, w2 = img2.shape[:2]
-            target_width = max(w1, w2)
+        # First image: Use only the top rectangle as first product
+        if 0 in pictures_by_image and len(pictures_by_image[0]) > 0:
+            first_pic = pictures_by_image[0][0]
+            print(f"\nProduct {product_id}: First image (full)")
+            print(f"  Using: {first_pic['source_image']} (rectangle 1)")
 
-            if w1 != target_width:
-                img1 = cv2.resize(img1, (target_width, h1))
-            if w2 != target_width:
-                img2 = cv2.resize(img2, (target_width, h2))
+            final = self.auto_crop(first_pic['image'])
 
-            # Combine vertically
-            combined = np.vstack([img1, img2])
-
-            # Final crop to remove any remaining white space
-            final = self.auto_crop(combined)
-
-            # Save
             filename = f"product_{product_id}.jpg"
             output_path = self.result_dir / filename
             cv2.imwrite(str(output_path), final)
@@ -235,13 +237,85 @@ class SequentialStitcher:
                 'product_id': product_id,
                 'filename': filename,
                 'path': str(output_path),
-                'source_bottom': current_pic['source_image'],
-                'source_top': next_pic['source_image'],
+                'source': first_pic['source_image'],
                 'dimensions': f"{final.shape[1]}x{final.shape[0]}"
             })
 
             print(f"  Saved: {filename} ({final.shape[1]}x{final.shape[0]})")
             product_id += 1
+
+        # For remaining images: Combine top of current + bottom of current = one product
+        for img_idx in sorted(pictures_by_image.keys()):
+            if img_idx == 0:
+                continue  # Already processed
+
+            pics = pictures_by_image[img_idx]
+
+            if len(pics) >= 2:
+                # Top rectangle (continuation of previous) + Bottom rectangle (start of new) = Product
+                top_pic = pics[0]
+                bottom_pic = pics[1]
+
+                print(f"\nProduct {product_id}:")
+                print(f"  Top: {top_pic['source_image']} (rectangle {top_pic['rect_index']+1})")
+                print(f"  Bottom: {bottom_pic['source_image']} (rectangle {bottom_pic['rect_index']+1})")
+
+                img_top = top_pic['image']
+                img_bottom = bottom_pic['image']
+
+                # Ensure same width
+                h1, w1 = img_top.shape[:2]
+                h2, w2 = img_bottom.shape[:2]
+                target_width = max(w1, w2)
+
+                if w1 != target_width:
+                    img_top = cv2.resize(img_top, (target_width, h1))
+                if w2 != target_width:
+                    img_bottom = cv2.resize(img_bottom, (target_width, h2))
+
+                # Combine vertically: top first, then bottom
+                combined = np.vstack([img_top, img_bottom])
+
+                # Final crop
+                final = self.auto_crop(combined)
+
+                # Save
+                filename = f"product_{product_id}.jpg"
+                output_path = self.result_dir / filename
+                cv2.imwrite(str(output_path), final)
+
+                products.append({
+                    'product_id': product_id,
+                    'filename': filename,
+                    'path': str(output_path),
+                    'source': top_pic['source_image'],
+                    'dimensions': f"{final.shape[1]}x{final.shape[0]}"
+                })
+
+                print(f"  Saved: {filename} ({final.shape[1]}x{final.shape[0]})")
+                product_id += 1
+
+            elif len(pics) == 1:
+                # Only one rectangle - save as is
+                pic = pics[0]
+                print(f"\nProduct {product_id}: Single rectangle from {pic['source_image']}")
+
+                final = self.auto_crop(pic['image'])
+
+                filename = f"product_{product_id}.jpg"
+                output_path = self.result_dir / filename
+                cv2.imwrite(str(output_path), final)
+
+                products.append({
+                    'product_id': product_id,
+                    'filename': filename,
+                    'path': str(output_path),
+                    'source': pic['source_image'],
+                    'dimensions': f"{final.shape[1]}x{final.shape[0]}"
+                })
+
+                print(f"  Saved: {filename} ({final.shape[1]}x{final.shape[0]})")
+                product_id += 1
 
         return products
 
