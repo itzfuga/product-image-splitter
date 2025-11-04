@@ -63,8 +63,8 @@ class SequentialStitcher:
         print(f"  Detecting separator in image ({width}x{height})...")
 
         # Scan for separator band - look for horizontal white/light gray area
-        # Skip the top 20% to avoid detecting headers like "MODEL INFORMATION"
-        start_y = int(height * 0.2)
+        # Start from top - separators can be anywhere
+        start_y = 0
         scan_step = 10
         separator_height = 80
 
