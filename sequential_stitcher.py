@@ -93,7 +93,8 @@ class SequentialStitcher:
             return [{'image': self.auto_crop(image), 'type': 'full'}]
 
         # Split into top and bottom
-        margin = 40  # Skip separator area
+        # Use larger margin to ensure separator text is completely removed
+        margin = 100  # Skip separator area (increased from 40 to 100)
         top_part = image[0:separator_y-margin, :]
         bottom_part = image[separator_y+margin:height, :]
 
