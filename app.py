@@ -12,12 +12,7 @@ from pathlib import Path
 import json
 import threading
 import time
-from separator_splitter import SeparatorSplitter
-from taobao_splitter import TaobaoSplitter
-from enhanced_taobao_splitter import EnhancedTaobaoSplitter
-from ultra_precise_taobao_splitter import UltraPreciseTaobaoSplitter
-from fixed_taobao_splitter import FixedTaobaoSplitter
-from puzzle_reconstructor import PuzzleReconstructor
+from sequential_stitcher import SequentialStitcher
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -195,9 +190,8 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Final Fixed Extractor (ultimate solution)
-        from final_fixed_extractor import FinalFixedExtractor
-        splitter = FinalFixedExtractor(result_dir, session_id)
+        # Create Sequential Stitcher
+        stitcher = SequentialStitcher(result_dir, session_id)
         
         # Update status
         processing_status[session_id]['progress'] = 10
@@ -214,13 +208,13 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
         processing_status[session_id]['message'] = f'Detecting separators in {len(images)} images...'
         
         # Process images and split at separators (chronological)
-        image_parts = splitter.process_images_chronologically(images)
+        model_pictures = stitcher.process_images_chronologically(images)
         
         processing_status[session_id]['progress'] = 70
-        processing_status[session_id]['message'] = f'Combining {len(image_parts)} image parts into products...'
-        
-        # Combine parts into products (chronological fixed order)
-        products = splitter.combine_chronologically_fixed_order(image_parts)
+        processing_status[session_id]['message'] = f'Combining {len(model_pictures)} model pictures into products...'
+
+        # Combine model pictures sequentially
+        products = stitcher.combine_sequential_model_pictures(model_pictures)
         
         if not products:
             processing_status[session_id]['status'] = 'error'
