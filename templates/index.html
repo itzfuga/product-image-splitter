@@ -393,26 +393,23 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 Taobao Product Image Tools</h1>
-            <p>Choose your processing mode below</p>
+            <h1>🎯 Taobao Product Image Stitcher</h1>
+            <p>Sequential model picture stitching tool</p>
         </div>
         
-        <div class="mode-selector">
-            <div class="mode-buttons">
-                <button class="mode-btn active" data-mode="taobao">🏷️ Taobao Splitting</button>
-                <button class="mode-btn" data-mode="separator">Separator Splitting</button>
-                <button class="mode-btn" data-mode="puzzle">Sequential Grouping</button>
-            </div>
-            <div class="mode-description" id="modeDescription">
-                Split images using separator detection (STAFF EXCEED text or visual lines)
-            </div>
+        <div class="info-box" style="background: #2a2a2a; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+            <h3 style="color: #4ecdc4; margin-bottom: 10px;">📌 How it works:</h3>
+            <p style="color: #ccc; margin: 5px 0;">• Upload your images in order (Taobao upload order is preserved)</p>
+            <p style="color: #ccc; margin: 5px 0;">• Tool detects white rectangles containing model pictures</p>
+            <p style="color: #ccc; margin: 5px 0;">• Creates products by stitching: bottom of model N + top of model N+1</p>
+            <p style="color: #ccc; margin: 5px 0;">• Headers, text, and separators are automatically removed</p>
         </div>
         
         <div class="upload-section">
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📸</div>
-                <div class="upload-text" id="uploadText">Drop images with separators here</div>
-                <div class="upload-hint" id="uploadHint">Detects "STAFF/START EXCEED END" text or visual separator lines • JPG, PNG, WEBP, AVIF</div>
+                <div class="upload-text" id="uploadText">Drop your Taobao product images here</div>
+                <div class="upload-hint" id="uploadHint">Upload in order (1.jpg, 2.jpg, 3.jpg...) • JPG, PNG, WEBP, AVIF</div>
                 <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
             </div>
             <button class="upload-btn" id="uploadBtn">Select Images</button>
@@ -473,7 +470,7 @@
         const uploadHint = document.getElementById('uploadHint');
         
         // Current processing mode
-        let currentMode = 'taobao';
+        // Removed mode switching - now uses only Sequential Stitcher
         
         // Mode descriptions
         const modeDescriptions = {
@@ -809,10 +806,9 @@
                 }
                 
                 // Upload the loaded files using the correct endpoint based on mode
-                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : 
-                                       currentMode === 'taobao' ? '/upload_taobao' : '/upload';
-                console.log(`URL loading - Current mode: ${currentMode}, Using endpoint: ${uploadEndpoint}`);
-                addLog(`Using ${currentMode} mode for URL loading - endpoint: ${uploadEndpoint}`);
+                const uploadEndpoint = '/upload_taobao';
+                console.log(`URL loading - Using endpoint: ${uploadEndpoint}`);
+                addLog(`Loading from URL - endpoint: ${uploadEndpoint}`);
                 const response = await fetch(uploadEndpoint, {
                     method: 'POST',
                     body: formData
@@ -887,10 +883,9 @@
                 addLog('Starting upload...');
                 
                 // Upload files using the correct endpoint based on mode
-                const uploadEndpoint = currentMode === 'puzzle' ? '/upload_puzzle' : 
-                                       currentMode === 'taobao' ? '/upload_taobao' : '/upload';
-                console.log(`Current mode: ${currentMode}, Using endpoint: ${uploadEndpoint}`);
-                addLog(`Using ${currentMode} mode - endpoint: ${uploadEndpoint}`);
+                const uploadEndpoint = '/upload_taobao';
+                console.log(`Using endpoint: ${uploadEndpoint}`);
+                addLog(`Processing images - endpoint: ${uploadEndpoint}`);
                 const response = await fetch(uploadEndpoint, {
                     method: 'POST',
                     body: formData
@@ -982,15 +977,15 @@
             localStorage.setItem(`results_${currentSessionId}`, JSON.stringify(results));
             
             // Update success message based on mode
-            if (currentMode === 'puzzle') {
+            if (false) { // Removed puzzle mode
                 successMessage.textContent = `Created ${results.groups} products from ${results.total_chains || results.groups} chains in ${results.total_images} images`;
             } else {
                 successMessage.textContent = `Created ${results.groups} products from ${results.total_segments || results.groups} segments in ${results.total_images} images`;
             }
             
             // Update stats
-            const segmentLabel = currentMode === 'puzzle' ? 'Chains Built' : 'Segments Created';
-            const segmentCount = currentMode === 'puzzle' ? (results.total_chains || results.groups) : (results.total_segments || results.groups);
+            const segmentLabel = 'Model Pictures Found';
+            const segmentCount = results.total_segments || results.groups;
             
             resultsStats.innerHTML = `
                 <div class="stat-item">
