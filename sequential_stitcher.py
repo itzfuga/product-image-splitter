@@ -55,67 +55,65 @@ class SequentialStitcher:
         print(f"Total loaded: {len(images)} images")
         return images
 
-    def detect_white_rectangles(self, image):
-        """Detect white rectangles containing model pictures"""
+    def detect_separator_position(self, image):
+        """Detect the Y position of 'START EXCEED END' separator"""
         height, width = image.shape[:2]
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        print(f"  Detecting white rectangles in image ({width}x{height})...")
+        print(f"  Detecting separator in image ({width}x{height})...")
 
-        # Threshold to find white/light regions
-        _, binary = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
+        # Scan for separator band - look for horizontal white/light gray area
+        scan_step = 10
+        separator_height = 80
 
-        # Invert so white becomes black and content becomes white
-        binary_inv = cv2.bitwise_not(binary)
+        for y in range(0, height - separator_height, scan_step):
+            strip = gray[y:y+separator_height, :]
+            mean_val = np.mean(strip)
+            std_val = np.std(strip)
 
-        # Find contours
-        contours, _ = cv2.findContours(binary_inv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Separator: mostly white/light gray (200-250) with some text variation (10-80)
+            if 200 < mean_val < 250 and 10 < std_val < 80:
+                # Check for horizontal uniformity
+                row_means = np.mean(strip, axis=1)
+                row_uniformity = np.std(row_means)
 
-        rectangles = []
+                if row_uniformity < 30:
+                    print(f"    Found separator at y={y}")
+                    return y + (separator_height // 2)  # Return middle of separator
 
-        for contour in contours:
-            x, y, w, h = cv2.boundingRect(contour)
+        print(f"    No separator found")
+        return None
 
-            # Filter by size - must be substantial (model picture)
-            # At least 400px wide and 400px tall
-            if w > 400 and h > 400:
-                rectangles.append({
-                    'x': x,
-                    'y': y,
-                    'width': w,
-                    'height': h,
-                    'area': w * h
-                })
+    def split_at_separator(self, image, separator_y):
+        """Split image into top and bottom parts at separator"""
+        height, width = image.shape[:2]
 
-        # Sort rectangles by Y position (top to bottom)
-        rectangles.sort(key=lambda r: r['y'])
+        if separator_y is None:
+            # No separator - return whole image
+            return [{'image': self.auto_crop(image), 'type': 'full'}]
 
-        print(f"  Found {len(rectangles)} model picture rectangles")
-        for i, rect in enumerate(rectangles):
-            print(f"    Rectangle {i+1}: pos=({rect['x']}, {rect['y']}) size={rect['width']}x{rect['height']}")
+        # Split into top and bottom
+        margin = 40  # Skip separator area
+        top_part = image[0:separator_y-margin, :]
+        bottom_part = image[separator_y+margin:height, :]
 
-        return rectangles
+        parts = []
 
-    def extract_model_pictures(self, image, rectangles):
-        """Extract model pictures from rectangles"""
-        model_pictures = []
-
-        for i, rect in enumerate(rectangles):
-            # Extract rectangle region
-            x, y, w, h = rect['x'], rect['y'], rect['width'], rect['height']
-            model_img = image[y:y+h, x:x+w]
-
-            # Auto-crop to remove any remaining white space
-            cropped = self.auto_crop(model_img)
-
-            model_pictures.append({
-                'image': cropped,
-                'original_rect': rect,
-                'index': i
+        if top_part.shape[0] > 100:  # Must be substantial
+            parts.append({
+                'image': self.auto_crop(top_part),
+                'type': 'top'
             })
-            print(f"    Extracted model picture {i+1}: {cropped.shape[1]}x{cropped.shape[0]}")
+            print(f"    Top part: {top_part.shape[1]}x{top_part.shape[0]}")
 
-        return model_pictures
+        if bottom_part.shape[0] > 100:  # Must be substantial
+            parts.append({
+                'image': self.auto_crop(bottom_part),
+                'type': 'bottom'
+            })
+            print(f"    Bottom part: {bottom_part.shape[1]}x{bottom_part.shape[0]}")
+
+        return parts
 
     def remove_header(self, image):
         """Remove header text and borders from top of image"""
@@ -162,8 +160,8 @@ class SequentialStitcher:
         return image[y:y+h, x:x+w]
 
     def process_images_chronologically(self, images):
-        """Process images and extract all model pictures"""
-        all_model_pictures = []
+        """Process images and split at separators"""
+        all_parts = []
 
         for i, img_data in enumerate(images):
             print(f"\nProcessing image {i+1}/{len(images)}: {img_data['name']}")
@@ -174,148 +172,81 @@ class SequentialStitcher:
                 image = self.remove_header(image)
                 print("  Removed header from first image")
 
-            # Detect white rectangles containing model pictures
-            rectangles = self.detect_white_rectangles(image)
+            # Detect separator position
+            separator_y = self.detect_separator_position(image)
 
-            # Extract model pictures from rectangles
-            model_pictures = self.extract_model_pictures(image, rectangles)
+            # Split at separator
+            parts = self.split_at_separator(image, separator_y)
 
             # Store with source info
-            for pic in model_pictures:
-                all_model_pictures.append({
-                    'image': pic['image'],
+            for part in parts:
+                all_parts.append({
+                    'image': part['image'],
+                    'type': part['type'],
                     'source_image': img_data['name'],
-                    'source_index': i,
-                    'rect_index': pic['index']
+                    'source_index': i
                 })
 
-        return all_model_pictures
+        return all_parts
 
-    def combine_sequential_model_pictures(self, model_pictures):
+    def combine_sequential_model_pictures(self, parts):
         """
-        Combine model pictures based on their position in source images.
+        Combine parts: Part N + Part N+1 = Product
 
-        Structure of Taobao images:
-        - Image 1: Top rectangle = Full product 1
-        - Image 2: Top rectangle = Bottom of product 1, Bottom rectangle = Top of product 2
-        - Image 3: Top rectangle = Bottom of product 2, Bottom rectangle = Top of product 3
-
-        So: Product N = Top rectangle of image N + Bottom rectangle of image N
+        Structure:
+        - Product 1 = Part 0 (original 1, before separator) + Part 1 (original 2, before separator)
+        - Product 2 = Part 2 (original 2, after separator) + Part 3 (original 3, before separator)
+        - And so on...
         """
         products = []
         product_id = 1
 
-        print(f"\n=== Analyzing {len(model_pictures)} model pictures ===")
+        print(f"\n=== Combining {len(parts)} parts into products ===")
+        print("Logic: Part N (top half of model) + Part N+1 (bottom half of model) = Product")
 
-        # Group pictures by source image
-        pictures_by_image = {}
-        for pic in model_pictures:
-            source_idx = pic['source_index']
-            if source_idx not in pictures_by_image:
-                pictures_by_image[source_idx] = []
-            pictures_by_image[source_idx].append(pic)
+        # Combine pairs: part[i] + part[i+1]
+        i = 0
+        while i < len(parts) - 1:
+            current_part = parts[i]
+            next_part = parts[i + 1]
 
-        # Sort each group by Y position (rect_index is already sorted)
-        for idx in pictures_by_image:
-            pictures_by_image[idx].sort(key=lambda p: p['rect_index'])
+            print(f"\nProduct {product_id}:")
+            print(f"  Top: {current_part['source_image']} ({current_part['type']} part)")
+            print(f"  Bottom: {next_part['source_image']} ({next_part['type']} part)")
 
-        print(f"\n=== Creating products from sequential rectangles ===")
+            img_top = current_part['image']
+            img_bottom = next_part['image']
 
-        # First image: Use only the top rectangle as first product
-        if 0 in pictures_by_image and len(pictures_by_image[0]) > 0:
-            first_pic = pictures_by_image[0][0]
-            print(f"\nProduct {product_id}: First image (full)")
-            print(f"  Using: {first_pic['source_image']} (rectangle 1)")
+            # Ensure same width
+            h1, w1 = img_top.shape[:2]
+            h2, w2 = img_bottom.shape[:2]
+            target_width = max(w1, w2)
 
-            final = self.auto_crop(first_pic['image'])
+            if w1 != target_width:
+                img_top = cv2.resize(img_top, (target_width, h1))
+            if w2 != target_width:
+                img_bottom = cv2.resize(img_bottom, (target_width, h2))
 
+            # Combine vertically: top first, then bottom
+            combined = np.vstack([img_top, img_bottom])
+
+            # Save (no additional cropping - already cropped)
             filename = f"product_{product_id}.jpg"
             output_path = self.result_dir / filename
-            cv2.imwrite(str(output_path), final)
+            cv2.imwrite(str(output_path), combined)
 
             products.append({
                 'product_id': product_id,
                 'filename': filename,
                 'path': str(output_path),
-                'source': first_pic['source_image'],
-                'dimensions': f"{final.shape[1]}x{final.shape[0]}"
+                'source_top': current_part['source_image'],
+                'source_bottom': next_part['source_image'],
+                'dimensions': f"{combined.shape[1]}x{combined.shape[0]}"
             })
 
-            print(f"  Saved: {filename} ({final.shape[1]}x{final.shape[0]})")
+            print(f"  Saved: {filename} ({combined.shape[1]}x{combined.shape[0]})")
             product_id += 1
-
-        # For remaining images: Combine top of current + bottom of current = one product
-        for img_idx in sorted(pictures_by_image.keys()):
-            if img_idx == 0:
-                continue  # Already processed
-
-            pics = pictures_by_image[img_idx]
-
-            if len(pics) >= 2:
-                # Top rectangle (continuation of previous) + Bottom rectangle (start of new) = Product
-                top_pic = pics[0]
-                bottom_pic = pics[1]
-
-                print(f"\nProduct {product_id}:")
-                print(f"  Top: {top_pic['source_image']} (rectangle {top_pic['rect_index']+1})")
-                print(f"  Bottom: {bottom_pic['source_image']} (rectangle {bottom_pic['rect_index']+1})")
-
-                img_top = top_pic['image']
-                img_bottom = bottom_pic['image']
-
-                # Ensure same width
-                h1, w1 = img_top.shape[:2]
-                h2, w2 = img_bottom.shape[:2]
-                target_width = max(w1, w2)
-
-                if w1 != target_width:
-                    img_top = cv2.resize(img_top, (target_width, h1))
-                if w2 != target_width:
-                    img_bottom = cv2.resize(img_bottom, (target_width, h2))
-
-                # Combine vertically: top first, then bottom
-                combined = np.vstack([img_top, img_bottom])
-
-                # Final crop
-                final = self.auto_crop(combined)
-
-                # Save
-                filename = f"product_{product_id}.jpg"
-                output_path = self.result_dir / filename
-                cv2.imwrite(str(output_path), final)
-
-                products.append({
-                    'product_id': product_id,
-                    'filename': filename,
-                    'path': str(output_path),
-                    'source': top_pic['source_image'],
-                    'dimensions': f"{final.shape[1]}x{final.shape[0]}"
-                })
-
-                print(f"  Saved: {filename} ({final.shape[1]}x{final.shape[0]})")
-                product_id += 1
-
-            elif len(pics) == 1:
-                # Only one rectangle - save as is
-                pic = pics[0]
-                print(f"\nProduct {product_id}: Single rectangle from {pic['source_image']}")
-
-                final = self.auto_crop(pic['image'])
-
-                filename = f"product_{product_id}.jpg"
-                output_path = self.result_dir / filename
-                cv2.imwrite(str(output_path), final)
-
-                products.append({
-                    'product_id': product_id,
-                    'filename': filename,
-                    'path': str(output_path),
-                    'source': pic['source_image'],
-                    'dimensions': f"{final.shape[1]}x{final.shape[0]}"
-                })
-
-                print(f"  Saved: {filename} ({final.shape[1]}x{final.shape[0]})")
-                product_id += 1
+            i += 1  # Move to next pair (overlapping)
 
         return products
 
