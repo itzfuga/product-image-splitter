@@ -63,21 +63,28 @@ class SequentialStitcher:
         print(f"  Detecting separator in image ({width}x{height})...")
 
         # Scan for separator band - look for horizontal white/light gray area
+        # Skip the top 20% to avoid detecting headers like "MODEL INFORMATION"
+        start_y = int(height * 0.2)
         scan_step = 10
         separator_height = 80
 
-        for y in range(0, height - separator_height, scan_step):
+        for y in range(start_y, height - separator_height, scan_step):
             strip = gray[y:y+separator_height, :]
             mean_val = np.mean(strip)
             std_val = np.std(strip)
 
             # Separator: mostly white/light gray (200-250) with some text variation (10-80)
-            if 200 < mean_val < 250 and 10 < std_val < 80:
-                # Check for horizontal uniformity
+            # Make it more strict - require higher brightness for white separators
+            if 210 < mean_val < 250 and 10 < std_val < 80:
+                # Check for horizontal uniformity (rows should be similar)
                 row_means = np.mean(strip, axis=1)
                 row_uniformity = np.std(row_means)
 
-                if row_uniformity < 30:
+                # Check central region has high brightness (white separator characteristic)
+                central_region = strip[20:60, int(width*0.3):int(width*0.7)]
+                central_brightness = np.mean(central_region)
+
+                if row_uniformity < 30 and central_brightness > 220:
                     print(f"    Found separator at y={y}")
                     return y + (separator_height // 2)  # Return middle of separator
 
