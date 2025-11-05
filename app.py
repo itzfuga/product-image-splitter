@@ -12,7 +12,7 @@ from pathlib import Path
 import json
 import threading
 import time
-from sequential_stitcher import SequentialStitcher
+from simple_box_stitcher import SimpleBoxStitcher
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -190,61 +190,43 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Sequential Stitcher
-        stitcher = SequentialStitcher(result_dir, session_id)
+        # Create Simple Box Stitcher
+        stitcher = SimpleBoxStitcher()
 
         # Update status
         processing_status[session_id]['progress'] = 10
-        processing_status[session_id]['message'] = 'Loading images...'
+        processing_status[session_id]['message'] = 'Processing Taobao images...'
 
-        # Load images
-        images = stitcher.load_images(upload_dir)
-        if not images:
-            processing_status[session_id]['status'] = 'error'
-            processing_status[session_id]['message'] = 'No valid images found'
-            return
-        
-        processing_status[session_id]['progress'] = 30
-        processing_status[session_id]['message'] = f'Detecting separators in {len(images)} images...'
-        
-        # Process images and split at separators (chronological)
-        model_pictures = stitcher.process_images_chronologically(images)
-        
-        processing_status[session_id]['progress'] = 70
-        processing_status[session_id]['message'] = f'Combining {len(model_pictures)} model pictures into products...'
+        # Process images using the new box detection method
+        product_paths_list = stitcher.process(str(upload_dir), str(result_dir))
 
-        # Combine model pictures sequentially
-        products = stitcher.combine_sequential_model_pictures(model_pictures)
-        
-        if not products:
+        if not product_paths_list:
             processing_status[session_id]['status'] = 'error'
             processing_status[session_id]['message'] = 'No products created'
             return
-        
+
         processing_status[session_id]['progress'] = 90
-        processing_status[session_id]['message'] = f'Generated {len(products)} product images...'
-        
-        # Create product paths list for web interface
+        processing_status[session_id]['message'] = f'Generated {len(product_paths_list)} product images...'
+
+        # Create product metadata for web interface
         product_paths = []
-        for product in products:
+        for idx, product_path in enumerate(product_paths_list):
+            filename = Path(product_path).name
             product_paths.append({
-                'product_id': product['product_id'],
-                'path': product['path'],
-                'filename': product['filename'],
-                'image_count': 2 if 'top_source' in product else 1,
-                'images': [
-                    product.get('bottom_source', product.get('source', 'Unknown')),
-                    product.get('top_source', '')
-                ] if 'top_source' in product else [product.get('source', 'Unknown')],
-                'dimensions': product.get('dimensions', '0x0')
+                'product_id': idx + 1,
+                'path': f'results/{session_id}/{filename}',
+                'filename': filename,
+                'image_count': 2,
+                'images': ['Combined from Taobao images'],
+                'dimensions': 'Auto-detected'
             })
-        
+
         # Save processing info
         processing_info = {
             'session_id': session_id,
-            'total_images': len(images),
-            'total_products': len(products),
-            'products': products
+            'total_images': len(stitcher.images),
+            'total_products': len(product_paths_list),
+            'products': [{'filename': Path(p).name, 'path': p} for p in product_paths_list]
         }
         
         info_path = result_dir / "taobao_processing_info.json"
@@ -284,89 +266,43 @@ def process_images_async(session_id, upload_dir, result_dir):
             'results': None
         }
         
-        # Create Sequential Stitcher
-        stitcher = SequentialStitcher(result_dir, session_id)
+        # Create Simple Box Stitcher
+        stitcher = SimpleBoxStitcher()
 
         # Update status
         processing_status[session_id]['progress'] = 10
-        processing_status[session_id]['message'] = 'Loading images...'
+        processing_status[session_id]['message'] = 'Processing images...'
 
-        # Load images
-        images = stitcher.load_images(upload_dir)
-        if not images:
+        # Process images using the new box detection method
+        product_paths_list = stitcher.process(str(upload_dir), str(result_dir))
+
+        if not product_paths_list:
             processing_status[session_id]['status'] = 'error'
-            processing_status[session_id]['message'] = 'No valid images found'
+            processing_status[session_id]['message'] = 'No products created'
             return
 
-        processing_status[session_id]['progress'] = 30
-        processing_status[session_id]['message'] = f'Detecting model pictures in {len(images)} images...'
-
-        # Process images and extract model pictures
-        model_pictures = stitcher.process_images_chronologically(images)
-
-        if not model_pictures:
-            processing_status[session_id]['status'] = 'error'
-            processing_status[session_id]['message'] = 'No model pictures found'
-            return
-
-        processing_status[session_id]['progress'] = 70
-        processing_status[session_id]['message'] = f'Combining {len(model_pictures)} model pictures into products...'
-
-        # Combine model pictures sequentially
-        products = stitcher.combine_sequential_model_pictures(model_pictures)
-        
-        if not products:
-            processing_status[session_id]['status'] = 'error'
-            processing_status[session_id]['message'] = 'No products created from segments'
-            return
-        
         processing_status[session_id]['progress'] = 90
-        processing_status[session_id]['message'] = f'Generated {len(products)} product images...'
-        
-        # Create product paths list for compatibility
+        processing_status[session_id]['message'] = f'Generated {len(product_paths_list)} product images...'
+
+        # Create product paths list for web interface
         product_paths = []
-        for product in products:
-            # Handle both combined segments and single segments
-            if 'bottom_segment' in product and 'top_segment' in product:
-                # Combined segments product
-                product_paths.append({
-                    'product_id': product['product_id'],
-                    'path': product['path'],
-                    'filename': product['filename'],
-                    'image_count': 2,  # Bottom segment + top segment
-                    'images': [
-                        f"{product['bottom_segment']['source']} (segment {product['bottom_segment']['segment_index']})",
-                        f"{product['top_segment']['source']} (segment {product['top_segment']['segment_index']})"
-                    ]
-                })
-            elif 'single_segment' in product:
-                # Single segment product
-                product_paths.append({
-                    'product_id': product['product_id'],
-                    'path': product['path'],
-                    'filename': product['filename'],
-                    'image_count': 1,  # Single segment
-                    'images': [
-                        f"{product['single_segment']['source']} (segment {product['single_segment']['segment_index']})"
-                    ]
-                })
-            else:
-                # Fallback for unknown structure
-                product_paths.append({
-                    'product_id': product['product_id'],
-                    'path': product['path'],
-                    'filename': product['filename'],
-                    'image_count': 1,
-                    'images': ['Unknown structure']
-                })
-        
+        for idx, product_path in enumerate(product_paths_list):
+            filename = Path(product_path).name
+            product_paths.append({
+                'product_id': idx + 1,
+                'path': f'results/{session_id}/{filename}',
+                'filename': filename,
+                'image_count': 2,
+                'images': ['Combined from uploaded images'],
+                'dimensions': 'Auto-detected'
+            })
+
         # Save processing info
         processing_info = {
             'session_id': session_id,
-            'total_images': len(images),
-            'total_segments': len(segments),
-            'total_products': len(products),
-            'products': products
+            'total_images': len(stitcher.images),
+            'total_products': len(product_paths_list),
+            'products': [{'filename': Path(p).name, 'path': p} for p in product_paths_list]
         }
         
         info_path = result_dir / "processing_info.json"
