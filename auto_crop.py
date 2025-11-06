@@ -91,28 +91,40 @@ class AutoCrop:
         largest_region = max(content_regions, key=lambda r: r[1] - r[0])
         top_y, bottom_y = largest_region
 
-        # Now detect horizontal whitespace by checking edge columns
-        # Check left side: find where content starts
+        # Now detect horizontal whitespace - only crop if edges are WHITE (not colored background)
+        # Check if left edge is white/near-white (true whitespace)
         left_x = 0
-        for x in range(width):
-            col = gray[top_y:bottom_y, x]
-            col_variance = np.var(col)
-            if col_variance > 100:  # Found content
-                left_x = x
-                break
+        left_edge_col = gray[top_y:bottom_y, 0]
+        left_mean = np.mean(left_edge_col)
 
-        # Check right side: find where content ends
+        # If left edge is bright (white-ish, >200), scan inward to find content
+        if left_mean > 200:
+            for x in range(width):
+                col = gray[top_y:bottom_y, x]
+                col_mean = np.mean(col)
+                # Found non-white content
+                if col_mean < 200:
+                    left_x = x
+                    break
+
+        # Check if right edge is white/near-white (true whitespace)
         right_x = width - 1
-        for x in range(width - 1, -1, -1):
-            col = gray[top_y:bottom_y, x]
-            col_variance = np.var(col)
-            if col_variance > 100:  # Found content
-                right_x = x
-                break
+        right_edge_col = gray[top_y:bottom_y, width - 1]
+        right_mean = np.mean(right_edge_col)
+
+        # If right edge is bright (white-ish, >200), scan inward to find content
+        if right_mean > 200:
+            for x in range(width - 1, -1, -1):
+                col = gray[top_y:bottom_y, x]
+                col_mean = np.mean(col)
+                # Found non-white content
+                if col_mean < 200:
+                    right_x = x
+                    break
 
         return (top_y, bottom_y, left_x, right_x)
 
-    def crop_image(self, image, bounds, margin=20):
+    def crop_image(self, image, bounds, margin=10):
         """
         Crop image to content bounds, removing whitespace on all sides where detected.
         """
@@ -123,8 +135,9 @@ class AutoCrop:
         height, width = image.shape[:2]
 
         # Add margin but keep within image bounds
+        # Use smaller margin for bottom to avoid leaving whitespace
         top_y = max(0, top_y - margin)
-        bottom_y = min(height, bottom_y + margin)
+        bottom_y = min(height, bottom_y + 5)  # Smaller bottom margin
         left_x = max(0, left_x - margin)
         right_x = min(width, right_x + margin)
 
@@ -159,7 +172,7 @@ class AutoCrop:
             print(f"  Content detected: y={top_y}-{bottom_y}, x={left_x}-{right_x}")
 
             # Crop to content
-            cropped = self.crop_image(img_data['image'], bounds, margin=20)
+            cropped = self.crop_image(img_data['image'], bounds)
 
             # Save cropped image
             output_filename = f"cropped_{img_data['filename']}"
