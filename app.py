@@ -13,6 +13,7 @@ import json
 import threading
 import time
 from simple_box_stitcher import SimpleBoxStitcher
+from auto_crop import AutoCrop
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -520,6 +521,127 @@ def upload_taobao_files():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/upload_autocrop', methods=['POST'])
+def upload_autocrop_files():
+    """Upload files for auto-crop (remove text/whitespace, keep only product)"""
+    print("✂️ AUTO-CROP ENDPOINT CALLED")
+
+    try:
+        # Check if files were uploaded
+        if 'files[]' not in request.files:
+            return jsonify({'error': 'No files uploaded'}), 400
+
+        files = request.files.getlist('files[]')
+        if not files or files[0].filename == '':
+            return jsonify({'error': 'No files selected'}), 400
+
+        # Create session
+        session_id = str(uuid.uuid4())
+        upload_dir = UPLOAD_FOLDER / session_id
+        result_dir = RESULTS_FOLDER / session_id
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        result_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save uploaded files
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file.save(upload_dir / filename)
+
+        # Initialize processing status
+        processing_status[session_id] = {
+            'status': 'processing',
+            'progress': 0,
+            'message': 'Starting auto-crop...'
+        }
+
+        # Start processing in background thread
+        thread = threading.Thread(
+            target=process_autocrop_async,
+            args=(session_id, upload_dir, result_dir)
+        )
+        thread.start()
+
+        return jsonify({
+            'session_id': session_id,
+            'message': 'Auto-crop processing started'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def process_autocrop_async(session_id, upload_dir, result_dir):
+    """Process auto-crop asynchronously"""
+    try:
+        # Create Auto Cropper
+        cropper = AutoCrop()
+
+        # Update status
+        processing_status[session_id]['progress'] = 10
+        processing_status[session_id]['message'] = 'Auto-cropping images...'
+
+        # Process images
+        cropped_paths = cropper.process(str(upload_dir), str(result_dir))
+
+        if not cropped_paths:
+            processing_status[session_id]['status'] = 'error'
+            processing_status[session_id]['message'] = 'No images cropped'
+            return
+
+        processing_status[session_id]['progress'] = 90
+        processing_status[session_id]['message'] = f'Cropped {len(cropped_paths)} images...'
+
+        # Create product metadata for web interface
+        product_paths = []
+        for idx, cropped_path in enumerate(cropped_paths):
+            filename = Path(cropped_path).name
+            product_paths.append({
+                'product_id': idx + 1,
+                'path': f'results/{session_id}/{filename}',
+                'filename': filename,
+                'image_count': 1,
+                'images': ['Auto-cropped'],
+                'dimensions': 'Auto-detected'
+            })
+
+        # Save processing info
+        processing_info = {
+            'session_id': session_id,
+            'total_images': len(cropper.images),
+            'total_cropped': len(cropped_paths),
+            'products': [{'filename': Path(p).name, 'path': p} for p in cropped_paths]
+        }
+
+        info_path = result_dir / "autocrop_info.json"
+        with open(info_path, 'w') as f:
+            json.dump(processing_info, f, indent=2)
+
+        # Update final status
+        processing_status[session_id] = {
+            'status': 'completed',
+            'progress': 100,
+            'message': f'Auto-crop complete! Processed {len(cropped_paths)} images.',
+            'results': {
+                'groups': len(cropped_paths),
+                'products': product_paths,
+                'info_path': str(info_path),
+                'total_images': len(cropper.images),
+                'processing_type': 'autocrop'
+            }
+        }
+
+    except Exception as e:
+        processing_status[session_id] = {
+            'status': 'error',
+            'progress': 0,
+            'message': f'Auto-crop error: {str(e)}'
+        }
+        print(f"Auto-crop error: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 
 @app.route('/upload_puzzle', methods=['POST'])
