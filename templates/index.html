@@ -811,11 +811,11 @@
                         addLog(`Failed to load: ${url}`, 'error');
                     }
                 }
-                
+
                 // Upload the loaded files using the correct endpoint based on mode
-                const uploadEndpoint = '/upload_taobao';
-                console.log(`URL loading - Using endpoint: ${uploadEndpoint}`);
-                addLog(`Loading from URL - endpoint: ${uploadEndpoint}`);
+                const uploadEndpoint = currentMode === 'autocrop' ? '/upload_autocrop' : '/upload_taobao';
+                console.log(`URL loading - Using endpoint: ${uploadEndpoint} (mode: ${currentMode})`);
+                addLog(`Loading from URL - mode: ${currentMode}`);
                 const response = await fetch(uploadEndpoint, {
                     method: 'POST',
                     body: formData
