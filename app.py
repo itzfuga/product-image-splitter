@@ -237,12 +237,12 @@ def process_taobao_images_async(session_id, upload_dir, result_dir):
         processing_status[session_id] = {
             'status': 'completed',
             'progress': 100,
-            'message': f'Taobao processing complete! Created {len(products)} products from {len(images)} images.',
+            'message': f'Taobao processing complete! Created {len(product_paths_list)} products from {len(stitcher.images)} images.',
             'results': {
-                'groups': len(products),
+                'groups': len(product_paths_list),
                 'products': product_paths,
                 'info_path': str(info_path),
-                'total_images': len(images),
+                'total_images': len(stitcher.images),
                 'processing_type': 'taobao'
             }
         }
@@ -320,12 +320,12 @@ def process_images_async(session_id, upload_dir, result_dir):
             'progress': 100,
             'message': f'Processing complete! Created {len(product_paths)} products from separator detection.',
             'results': {
-                'groups': len(products),  # Number of products created 
+                'groups': len(product_paths_list),  # Number of products created
                 'products': product_paths,
                 'summary_path': None,  # No summary for separator splitting
                 'info_path': str(info_path),
-                'total_images': len(images),
-                'total_segments': len(segments),
+                'total_images': len(stitcher.images),
+                'total_segments': len(product_paths_list),
                 'debug_analysis_url': f'/debug/analysis/{session_id}'  # Add debug URL
             }
         }
