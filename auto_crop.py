@@ -45,9 +45,9 @@ class AutoCrop:
 
     def detect_content_bounds(self, image):
         """
-        Detect the bounding box of actual content (product/model) using variance.
-        Excludes text regions by looking for continuous high-variance blocks.
-        Returns (top_y, bottom_y, left_x, right_x) or None if detection fails.
+        Detect the vertical bounds of actual content (product/model).
+        Only crops top/bottom (removes text), keeps full width.
+        Returns (top_y, bottom_y) or None if detection fails.
         """
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         height, width = image.shape[:2]
@@ -91,47 +91,24 @@ class AutoCrop:
         largest_region = max(content_regions, key=lambda r: r[1] - r[0])
         top_y, bottom_y = largest_region
 
-        # Calculate column variance (horizontal analysis) within the content region
-        col_variances = []
-        for x in range(width):
-            col = gray[top_y:bottom_y, x]
-            variance = np.var(col)
-            col_variances.append(variance)
-
-        # Smooth column variance
-        smoothed_col_variance = uniform_filter1d(col_variances, size=20)
-
-        # Content columns have high variance
-        is_content_col = smoothed_col_variance > variance_threshold
-        content_cols = np.where(is_content_col)[0]
-
-        if len(content_cols) == 0:
-            # Fallback: use full width
-            left_x = 0
-            right_x = width - 1
-        else:
-            left_x = content_cols[0]
-            right_x = content_cols[-1]
-
-        return (top_y, bottom_y, left_x, right_x)
+        return (top_y, bottom_y)
 
     def crop_image(self, image, bounds, margin=10):
         """
-        Crop image to bounds with optional margin.
+        Crop image vertically only (top/bottom), keep full width.
         """
         if bounds is None:
             return image
 
-        top_y, bottom_y, left_x, right_x = bounds
-        height, width = image.shape[:2]
+        top_y, bottom_y = bounds
+        height = image.shape[0]
 
         # Add margin but keep within image bounds
         top_y = max(0, top_y - margin)
         bottom_y = min(height, bottom_y + margin)
-        left_x = max(0, left_x - margin)
-        right_x = min(width, right_x + margin)
 
-        cropped = image[top_y:bottom_y, left_x:right_x].copy()
+        # Crop only vertically, keep full width
+        cropped = image[top_y:bottom_y, :].copy()
         return cropped
 
     def process(self, input_dir, output_dir):
@@ -157,8 +134,8 @@ class AutoCrop:
                 print(f"  ⚠ Could not detect content, skipping...")
                 continue
 
-            top_y, bottom_y, left_x, right_x = bounds
-            print(f"  Content detected: x={left_x}-{right_x}, y={top_y}-{bottom_y}")
+            top_y, bottom_y = bounds
+            print(f"  Content detected: y={top_y}-{bottom_y} (keeping full width)")
 
             # Crop to content
             cropped = self.crop_image(img_data['image'], bounds, margin=10)
