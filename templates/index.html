@@ -393,10 +393,20 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 Taobao Product Image Stitcher</h1>
-            <p>Sequential model picture stitching tool</p>
+            <h1>🎯 Taobao Product Image Tools</h1>
+            <p>Image processing and stitching for e-commerce</p>
         </div>
-        
+
+        <div class="mode-selector">
+            <div class="mode-buttons">
+                <button class="mode-btn active" data-mode="taobao">📦 Taobao Stitcher</button>
+                <button class="mode-btn" data-mode="autocrop">✂️ Auto-Crop</button>
+            </div>
+            <div class="mode-description" id="modeDescription">
+                Optimized for Taobao images - combines bottom of image N with top of image N+1
+            </div>
+        </div>
+
         <div class="info-box" style="background: #2a2a2a; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
             <h3 style="color: #4ecdc4; margin-bottom: 10px;">📌 How it works:</h3>
             <p style="color: #ccc; margin: 5px 0;">• Upload your images in order (Taobao upload order is preserved)</p>
@@ -470,26 +480,23 @@
         const uploadHint = document.getElementById('uploadHint');
         
         // Current processing mode
-        // Removed mode switching - now uses only Sequential Stitcher
-        
+        let currentMode = 'taobao';
+
         // Mode descriptions
         const modeDescriptions = {
-            taobao: 'Optimized for Taobao images with "START EXCEED END" separators - combines bottom of image N with top of image N+1',
-            separator: 'Split images using separator detection (STAFF EXCEED text or visual lines)',
-            puzzle: 'Group consecutive Taobao product images sequentially (2-3 images per product)'
+            taobao: 'Optimized for Taobao images - combines bottom of image N with top of image N+1',
+            autocrop: 'Automatically remove text and whitespace, keeping only the product/model'
         };
-        
+
         // Upload area text for different modes
         const uploadTexts = {
             taobao: 'Drop your Taobao product images here (in order: 1.jpg, 2.jpg, 3.jpg...)',
-            separator: 'Drop images with separators here',
-            puzzle: 'Drop sequential product images here'
+            autocrop: 'Drop product images to auto-crop (removes text & whitespace)'
         };
-        
+
         const uploadHints = {
-            taobao: 'Optimized for Taobao: detects separators and combines bottom N + top N+1 • JPG, PNG, WEBP, AVIF',
-            separator: 'Detects "STAFF/START EXCEED END" text or visual separator lines • JPG, PNG, WEBP, AVIF',
-            puzzle: 'Groups images in upload order (1+2, 3+4, etc.) • JPG, PNG, WEBP, AVIF'
+            taobao: 'Detects white rectangles and combines bottom N + top N+1 • JPG, PNG, WEBP, AVIF',
+            autocrop: 'Removes brand text and whitespace from all sides • JPG, PNG, WEBP, AVIF'
         };
         
         // Mode switching functionality
@@ -883,9 +890,9 @@
                 addLog('Starting upload...');
                 
                 // Upload files using the correct endpoint based on mode
-                const uploadEndpoint = '/upload_taobao';
-                console.log(`Using endpoint: ${uploadEndpoint}`);
-                addLog(`Processing images - endpoint: ${uploadEndpoint}`);
+                const uploadEndpoint = currentMode === 'autocrop' ? '/upload_autocrop' : '/upload_taobao';
+                console.log(`Using endpoint: ${uploadEndpoint} (mode: ${currentMode})`);
+                addLog(`Processing images - mode: ${currentMode}`);
                 const response = await fetch(uploadEndpoint, {
                     method: 'POST',
                     body: formData
