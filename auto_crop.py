@@ -91,36 +91,10 @@ class AutoCrop:
         largest_region = max(content_regions, key=lambda r: r[1] - r[0])
         top_y, bottom_y = largest_region
 
-        # Now detect horizontal whitespace - only crop if edges are WHITE (not colored background)
-        # Check if left edge is white/near-white (true whitespace)
+        # Don't crop horizontally - only remove text from top/bottom
+        # Keep full width to preserve image box and aspect ratio
         left_x = 0
-        left_edge_col = gray[top_y:bottom_y, 0]
-        left_mean = np.mean(left_edge_col)
-
-        # If left edge is bright (white-ish, >200), scan inward to find content
-        if left_mean > 200:
-            for x in range(width):
-                col = gray[top_y:bottom_y, x]
-                col_mean = np.mean(col)
-                # Found non-white content
-                if col_mean < 200:
-                    left_x = x
-                    break
-
-        # Check if right edge is white/near-white (true whitespace)
         right_x = width - 1
-        right_edge_col = gray[top_y:bottom_y, width - 1]
-        right_mean = np.mean(right_edge_col)
-
-        # If right edge is bright (white-ish, >200), scan inward to find content
-        if right_mean > 200:
-            for x in range(width - 1, -1, -1):
-                col = gray[top_y:bottom_y, x]
-                col_mean = np.mean(col)
-                # Found non-white content
-                if col_mean < 200:
-                    right_x = x
-                    break
 
         return (top_y, bottom_y, left_x, right_x)
 
@@ -135,9 +109,9 @@ class AutoCrop:
         height, width = image.shape[:2]
 
         # Add margin but keep within image bounds
-        # Use smaller margin for bottom to avoid leaving whitespace
+        # Use no margin for bottom to avoid leaving whitespace
         top_y = max(0, top_y - margin)
-        bottom_y = min(height, bottom_y + 5)  # Smaller bottom margin
+        bottom_y = min(height, bottom_y)  # No bottom margin to avoid whitespace
         left_x = max(0, left_x - margin)
         right_x = min(width, right_x + margin)
 
