@@ -4,173 +4,163 @@ import os
 from pathlib import Path
 import re
 
+
 class AutoCrop:
     """
-    Automatically crop product images to remove text, whitespace, and keep only the product/model.
-    Uses variance-based content detection similar to the Taobao stitcher.
+    Crop a Taobao "card" product image down to just the product photo.
+
+    Taobao templates wrap the real product photo in decoration: a logo (a
+    full-width bar at the very top, or a swoosh embedded inside the photo), a
+    thin frame, white margin all around, and often a gibberish caption block at
+    the bottom. The product photo itself sits on its natural (soft grey / studio)
+    background.
+
+    What we want is NOT a cut-out on white -- it is the original photo, untouched,
+    with only the decoration removed: drop the logo, the frame, the caption and
+    the surrounding margin, keep the product (model AND any pedestal it stands on)
+    exactly as shot, on its own background.
+
+    Method (simple, robust, no ML):
+      1. Photo panel = largest connected region of non-white pixels. The outer
+         white margin is excluded; a separate top logo BAR (its own component)
+         is excluded. Inset a few px to drop the thin frame line.
+      2. Inside the panel, take the largest contiguous vertical run of content
+         rows. This drops a logo that sits ABOVE the product with a gap (it is a
+         shorter, separate run).
+      3. Inside that run, bound to the rows that actually contain product
+         (rows with enough genuinely dark pixels). Logo swooshes and caption
+         text sit on uniform LIGHT-grey bands that have almost no dark pixels, so
+         they are excluded; the model and the (darker) pedestal are kept.
+      4. Trim near-white margin columns, add a little breathing room, and crop.
+         Original pixels and the natural background are kept -- nothing is matted.
+
+    Note: this targets the common Taobao card layouts (logo top, caption bottom,
+    product in the middle on a light background). A product part that is itself
+    very light and sits at the extreme top/bottom edge could be trimmed; in
+    practice these shots have a dark head/footwear/pedestal at the extremes.
     """
+
+    WHITE     = 250    # gray >= this is pure-white margin (not content)
+    INK       = 235    # gray < this counts as "any content" (incl. light product)
+    DARK      = 205    # gray < this counts as genuinely dark product content
+    ROWFRAC   = 0.01   # a row has content if this fraction of pixels is < INK
+    DARKFRAC  = 0.12   # a row is product (not a light caption/logo band) if this
+                       # fraction of pixels is < DARK
+    INSET     = 8      # px shaved off the panel to drop the thin frame line
+    PAD_V     = 24     # vertical breathing room kept around the product
+    PAD_H     = 20     # horizontal breathing room kept around the product
+    MIN_FRAC  = 0.05   # ignore "panels" smaller than this fraction of the image
 
     def __init__(self):
         self.images = []
 
     def natural_sort_key(self, s):
-        """Sort strings containing numbers naturally"""
-        return [int(text) if text.isdigit() else text.lower()
-                for text in re.split('([0-9]+)', str(s))]
+        return [int(t) if t.isdigit() else t.lower()
+                for t in re.split(r'([0-9]+)', str(s))]
+
+    def _read(self, path):
+        img = cv2.imread(path)
+        if img is None:  # webp / avif / odd codecs -> PIL fallback
+            try:
+                from PIL import Image
+                img = cv2.cvtColor(np.array(Image.open(path).convert("RGB")), cv2.COLOR_RGB2BGR)
+            except Exception:
+                img = None
+        return img
 
     def load_images(self, input_dir):
-        """Load all images from directory"""
         self.images = []
-        image_files = []
-
-        for file in os.listdir(input_dir):
-            if file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                image_files.append(file)
-
-        image_files.sort(key=self.natural_sort_key)
-
-        for file in image_files:
-            path = os.path.join(input_dir, file)
-            img = cv2.imread(path)
+        files = [f for f in os.listdir(input_dir)
+                 if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif'))]
+        files.sort(key=self.natural_sort_key)
+        for f in files:
+            path = os.path.join(input_dir, f)
+            img = self._read(path)
             if img is not None:
-                self.images.append({
-                    'filename': file,
-                    'image': img,
-                    'path': path
-                })
-                print(f"Loaded: {file} - Shape: {img.shape}")
-
+                self.images.append({'filename': f, 'image': img, 'path': path})
+                print(f"Loaded: {f} - Shape: {img.shape}")
         print(f"\nTotal images loaded: {len(self.images)}")
         return len(self.images)
 
-    def detect_content_bounds(self, image):
-        """
-        Detect the bounds of actual content (product/model).
-        Removes text/whitespace from all sides.
-        Returns (top_y, bottom_y, left_x, right_x) or None if detection fails.
-        """
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        height, width = image.shape[:2]
+    def _runs(self, mask):
+        out, s = [], None
+        for i, v in enumerate(mask):
+            if v and s is None:
+                s = i
+            elif not v and s is not None:
+                out.append((s, i)); s = None
+        if s is not None:
+            out.append((s, len(mask)))
+        return out
 
-        # Calculate row variance (vertical analysis)
-        row_variances = []
-        for y in range(height):
-            row = gray[y, :]
-            variance = np.var(row)
-            row_variances.append(variance)
+    def crop_to_product(self, img):
+        """Crop to the product (logo, frame, caption and white margin removed)."""
+        g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        H, W = g.shape
 
-        # Smooth variance to reduce noise
-        from scipy.ndimage import uniform_filter1d
-        smoothed_row_variance = uniform_filter1d(row_variances, size=20)
+        # 1) photo panel = largest non-white component (drops outer margin + separate logo bar)
+        content = (g < self.WHITE).astype(np.uint8)
+        n, lab, stats, _ = cv2.connectedComponentsWithStats(content, 8)
+        if n <= 1:
+            return img
+        i = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+        if stats[i, cv2.CC_STAT_AREA] < self.MIN_FRAC * H * W:
+            return img
+        px, py = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP]
+        pw, ph = stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
+        ins = self.INSET if (pw > 4 * self.INSET and ph > 4 * self.INSET) else 0
+        px, py, pw, ph = px + ins, py + ins, pw - 2 * ins, ph - 2 * ins
+        pg = g[py:py + ph, px:px + pw]
 
-        # Content rows have high variance (>300 for these images)
-        variance_threshold = 300
-        is_content_row = smoothed_row_variance > variance_threshold
+        # 2) largest contiguous vertical run of content rows (drops a separated top logo)
+        flight = (pg < self.INK).mean(axis=1)
+        runs = self._runs(flight > self.ROWFRAC)
+        if not runs:
+            return img[py:py + ph, px:px + pw]
+        a, b = max(runs, key=lambda r: r[1] - r[0])
 
-        # Find continuous content regions (exclude small isolated text blocks)
-        content_regions = []
-        start = None
-        min_region_height = height * 0.20  # Region must be at least 20% of image height
+        # 3) bound to rows that hold genuinely dark product (drops light caption/logo bands)
+        fdark = (pg < self.DARK).mean(axis=1)
+        drows = [y for y in range(a, b) if fdark[y] > self.DARKFRAC]
+        top, bot = (drows[0], drows[-1] + 1) if drows else (a, b)
+        y0 = max(0, top - self.PAD_V)
+        y1 = min(ph, bot + self.PAD_V)
 
-        for y, is_content in enumerate(is_content_row):
-            if is_content and start is None:
-                start = y
-            elif not is_content and start is not None:
-                if y - start > min_region_height:
-                    content_regions.append((start, y))
-                start = None
+        # 4) trim near-white margin columns, keep a little breathing room
+        band = pg[y0:y1]
+        cmask = (band < self.WHITE).mean(axis=0) > 0.02
+        cols = np.where(cmask)[0]
+        if len(cols):
+            x0 = max(0, int(cols.min()) - self.PAD_H)
+            x1 = min(pw, int(cols.max()) + 1 + self.PAD_H)
+        else:
+            x0, x1 = 0, pw
 
-        # Check last region
-        if start is not None and height - start > min_region_height:
-            content_regions.append((start, height))
-
-        if len(content_regions) == 0:
-            return None
-
-        # Use the largest content region (the main product image)
-        largest_region = max(content_regions, key=lambda r: r[1] - r[0])
-        top_y, bottom_y = largest_region
-
-        # Don't crop horizontally - only remove text from top/bottom
-        # Keep full width to preserve image box and aspect ratio
-        left_x = 0
-        right_x = width - 1
-
-        return (top_y, bottom_y, left_x, right_x)
-
-    def crop_image(self, image, bounds, margin=10):
-        """
-        Crop image to content bounds, removing whitespace on all sides where detected.
-        """
-        if bounds is None:
-            return image
-
-        top_y, bottom_y, left_x, right_x = bounds
-        height, width = image.shape[:2]
-
-        # Add margin but keep within image bounds
-        # Use no margin for bottom to avoid leaving whitespace
-        top_y = max(0, top_y - margin)
-        bottom_y = min(height, bottom_y)  # No bottom margin to avoid whitespace
-        left_x = max(0, left_x - margin)
-        right_x = min(width, right_x + margin)
-
-        # Crop to detected bounds
-        cropped = image[top_y:bottom_y, left_x:right_x].copy()
-        return cropped
+        return img[py + y0:py + y1, px + x0:px + x1]
 
     def process(self, input_dir, output_dir):
-        """
-        Process all images: detect content and crop to remove text/whitespace.
-        """
         os.makedirs(output_dir, exist_ok=True)
-
         if self.load_images(input_dir) == 0:
             print("No images found!")
             return []
 
-        print("\n=== AUTO-CROPPING IMAGES ===")
-
+        print("\n=== AUTO-CROPPING IMAGES (photo-panel crop) ===")
         cropped_paths = []
-        for idx, img_data in enumerate(self.images):
-            print(f"\nProcessing {img_data['filename']}...")
-
-            # Detect content bounds
-            bounds = self.detect_content_bounds(img_data['image'])
-
-            if bounds is None:
-                print(f"  ⚠ Could not detect content, skipping...")
-                continue
-
-            top_y, bottom_y, left_x, right_x = bounds
-            print(f"  Content detected: y={top_y}-{bottom_y}, x={left_x}-{right_x}")
-
-            # Crop to content
-            cropped = self.crop_image(img_data['image'], bounds)
-
-            # Save cropped image
-            output_filename = f"cropped_{img_data['filename']}"
-            output_path = os.path.join(output_dir, output_filename)
-            cv2.imwrite(output_path, cropped)
-            cropped_paths.append(output_path)
-
-            print(f"  ✓ Cropped: {img_data['image'].shape} → {cropped.shape}")
-
+        for img_data in self.images:
+            cropped = self.crop_to_product(img_data['image'])
+            stem = Path(img_data['filename']).stem
+            out_path = os.path.join(output_dir, f"cropped_{stem}.png")
+            cv2.imwrite(out_path, cropped)
+            cropped_paths.append(out_path)
+            print(f"  OK {img_data['filename']}: {img_data['image'].shape[1]}x{img_data['image'].shape[0]}"
+                  f" -> {cropped.shape[1]}x{cropped.shape[0]}")
         print(f"\n=== PROCESSED {len(cropped_paths)}/{len(self.images)} IMAGES ===")
         return cropped_paths
 
 
 if __name__ == "__main__":
     import sys
-
     if len(sys.argv) != 3:
         print("Usage: python auto_crop.py <input_dir> <output_dir>")
         sys.exit(1)
-
-    input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
-
-    cropper = AutoCrop()
-    results = cropper.process(input_dir, output_dir)
-
-    print(f"\nDone! Processed {len(results)} images in {output_dir}")
+    AutoCrop().process(sys.argv[1], sys.argv[2])
