@@ -5,3 +5,5 @@ numpy==2.0.2
 scipy==1.14.1
 pytesseract==0.3.13
 gunicorn==21.2.0
+rembg==2.0.69
+onnxruntime==1.19.2
