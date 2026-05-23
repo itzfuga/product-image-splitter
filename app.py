@@ -14,6 +14,7 @@ import threading
 import time
 from simple_box_stitcher import SimpleBoxStitcher
 from auto_crop import AutoCrop
+from side_slice_stitcher import SideSliceStitcher
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -178,6 +179,64 @@ def process_puzzle_async(session_id, upload_dir, result_dir):
             'progress': 0,
             'message': f'Puzzle reconstruction error: {str(e)}',
             'results': None
+        }
+
+
+def process_sidesplit_async(session_id, upload_dir, result_dir):
+    """Reconstruct LEFT/RIGHT split Taobao photos into individual product images."""
+    try:
+        processing_status[session_id] = {
+            'status': 'processing', 'progress': 0,
+            'message': 'Initializing side-split reconstruction...', 'results': None
+        }
+        stitcher = SideSliceStitcher()
+        processing_status[session_id]['progress'] = 10
+        processing_status[session_id]['message'] = 'Reconstructing left/right slices...'
+
+        product_paths_list = stitcher.process(str(upload_dir), str(result_dir))
+        if not product_paths_list:
+            processing_status[session_id]['status'] = 'error'
+            processing_status[session_id]['message'] = 'No products created'
+            return
+
+        processing_status[session_id]['progress'] = 90
+        product_paths = []
+        for idx, product_path in enumerate(product_paths_list):
+            filename = Path(product_path).name
+            product_paths.append({
+                'product_id': idx + 1,
+                'path': f'results/{session_id}/{filename}',
+                'filename': filename,
+                'image_count': 1,
+                'images': ['Side-split + stitched'],
+                'dimensions': 'Auto-detected'
+            })
+
+        info_path = result_dir / "sidesplit_info.json"
+        with open(info_path, 'w') as f:
+            json.dump({
+                'session_id': session_id,
+                'total_images': len(stitcher.images),
+                'total_products': len(product_paths_list),
+                'products': [{'filename': Path(p).name, 'path': p} for p in product_paths_list]
+            }, f, indent=2)
+
+        processing_status[session_id] = {
+            'status': 'completed', 'progress': 100,
+            'message': f'Side-split complete! Created {len(product_paths_list)} products from {len(stitcher.images)} slices.',
+            'results': {
+                'groups': len(product_paths_list),
+                'products': product_paths,
+                'info_path': str(info_path),
+                'total_images': len(stitcher.images),
+                'total_segments': len(product_paths_list),
+                'processing_type': 'sidesplit'
+            }
+        }
+    except Exception as e:
+        processing_status[session_id] = {
+            'status': 'error', 'progress': 0,
+            'message': f'Side-split error: {str(e)}', 'results': None
         }
 
 
@@ -439,6 +498,62 @@ def upload_files():
             'message': f'Uploaded {len(saved_files)} files. Processing started...'
         })
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/upload_sidesplit', methods=['POST'])
+def upload_sidesplit_files():
+    """Upload files for LEFT/RIGHT side-split reconstruction"""
+    print("↔️ SIDE-SPLIT ENDPOINT CALLED")
+    try:
+        if 'files[]' not in request.files:
+            return jsonify({'error': 'No files provided'}), 400
+        files = request.files.getlist('files[]')
+        if not files or all(f.filename == '' for f in files):
+            return jsonify({'error': 'No files selected'}), 400
+
+        session_id = str(uuid.uuid4())
+        session['session_id'] = session_id
+        upload_dir = UPLOAD_FOLDER / session_id
+        result_dir = RESULTS_FOLDER / session_id
+        upload_dir.mkdir(exist_ok=True)
+        result_dir.mkdir(exist_ok=True)
+
+        saved_files = []
+        for i, file in enumerate(files):
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                if not filename:
+                    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+                    filename = f"image_{i+1}.{ext}"
+                counter = 1
+                original_name = filename
+                while (upload_dir / filename).exists():
+                    if '.' in original_name:
+                        name, ext = original_name.rsplit('.', 1)
+                        filename = f"{name}_{counter}.{ext}"
+                    else:
+                        filename = f"{original_name}_{counter}"
+                    counter += 1
+                file.save(str(upload_dir / filename))
+                saved_files.append(filename)
+
+        if not saved_files:
+            return jsonify({'error': 'No valid image files uploaded'}), 400
+
+        thread = threading.Thread(
+            target=process_sidesplit_async,
+            args=(session_id, upload_dir, result_dir)
+        )
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({
+            'success': True, 'session_id': session_id,
+            'files_uploaded': len(saved_files),
+            'message': f'Uploaded {len(saved_files)} files. Side-split started...'
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

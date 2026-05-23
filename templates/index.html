@@ -401,6 +401,7 @@
             <div class="mode-buttons">
                 <button class="mode-btn active" data-mode="taobao">📦 Taobao Stitcher</button>
                 <button class="mode-btn" data-mode="autocrop">✂️ Auto-Crop</button>
+                <button class="mode-btn" data-mode="sidesplit">↔️ Side-Split</button>
             </div>
             <div class="mode-description" id="modeDescription">
                 Optimized for Taobao images - combines bottom of image N with top of image N+1
@@ -485,18 +486,21 @@
         // Mode descriptions
         const modeDescriptions = {
             taobao: 'Optimized for Taobao images - combines bottom of image N with top of image N+1',
-            autocrop: 'Automatically remove text and whitespace, keeping only the product/model'
+            autocrop: 'Automatically remove text and whitespace, keeping only the product/model',
+            sidesplit: 'For photos split LEFT/RIGHT into vertical slices — stitches halves back together, trims white, splits stacked photos'
         };
 
         // Upload area text for different modes
         const uploadTexts = {
             taobao: 'Drop your Taobao product images here (in order: 1.jpg, 2.jpg, 3.jpg...)',
-            autocrop: 'Drop product images to auto-crop (removes text & whitespace)'
+            autocrop: 'Drop product images to auto-crop (removes text & whitespace)',
+            sidesplit: 'Drop the left/right slice images here (any order)'
         };
 
         const uploadHints = {
             taobao: 'Detects white rectangles and combines bottom N + top N+1 • JPG, PNG, WEBP, AVIF',
-            autocrop: 'Removes brand text and whitespace from all sides • JPG, PNG, WEBP, AVIF'
+            autocrop: 'Removes brand text and whitespace from all sides • JPG, PNG, WEBP, AVIF',
+            sidesplit: 'Reconstructs full photos from L/R halves & removes white margins • JPG, PNG, WEBP, AVIF'
         };
         
         // Mode switching functionality
@@ -813,7 +817,8 @@
                 }
 
                 // Upload the loaded files using the correct endpoint based on mode
-                const uploadEndpoint = currentMode === 'autocrop' ? '/upload_autocrop' : '/upload_taobao';
+                const endpointMap = { autocrop: '/upload_autocrop', sidesplit: '/upload_sidesplit', taobao: '/upload_taobao' };
+                const uploadEndpoint = endpointMap[currentMode] || '/upload_taobao';
                 console.log(`URL loading - Using endpoint: ${uploadEndpoint} (mode: ${currentMode})`);
                 addLog(`Loading from URL - mode: ${currentMode}`);
                 const response = await fetch(uploadEndpoint, {
@@ -890,7 +895,8 @@
                 addLog('Starting upload...');
                 
                 // Upload files using the correct endpoint based on mode
-                const uploadEndpoint = currentMode === 'autocrop' ? '/upload_autocrop' : '/upload_taobao';
+                const endpointMap = { autocrop: '/upload_autocrop', sidesplit: '/upload_sidesplit', taobao: '/upload_taobao' };
+                const uploadEndpoint = endpointMap[currentMode] || '/upload_taobao';
                 console.log(`Using endpoint: ${uploadEndpoint} (mode: ${currentMode})`);
                 addLog(`Processing images - mode: ${currentMode}`);
                 const response = await fetch(uploadEndpoint, {
